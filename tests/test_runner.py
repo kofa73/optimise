@@ -243,3 +243,49 @@ echo $((COUNT + 1)) > {state_file}
             early_abort_regression_pct=10,
         )
         assert result[0]["user"] == pytest.approx(1.0)
+
+
+from optimise.runner import parse_generated_ideas, parse_selection
+
+
+class TestParseGeneratedIdeas:
+    def test_parses_structured_output(self):
+        text = """
+---
+FILENAME: precompute-half-aniso
+TITLE: precompute half_anisotropy outside pixel loop
+DESCRIPTION:
+Move the computation of half_anisotropy outside the inner loop
+to save 4 multiplies per pixel.
+---
+---
+FILENAME: unroll-gradient-calc
+TITLE: unroll gradient calculation loop
+DESCRIPTION:
+Replace the for loop with explicit scalar operations.
+---
+"""
+        ideas = parse_generated_ideas(text)
+        assert len(ideas) == 2
+        assert ideas[0]["filename"] == "precompute-half-aniso"
+        assert ideas[0]["title"] == "precompute half_anisotropy outside pixel loop"
+        assert "half_anisotropy" in ideas[0]["description"]
+        assert ideas[1]["filename"] == "unroll-gradient-calc"
+
+    def test_empty_output(self):
+        ideas = parse_generated_ideas("")
+        assert ideas == []
+
+
+class TestParseSelection:
+    def test_extracts_filename(self):
+        assert parse_selection("idea-a.md\n") == "idea-a.md"
+
+    def test_extracts_from_backticks(self):
+        assert parse_selection("The best idea is `idea-b.md`") == "idea-b.md"
+
+    def test_strips_whitespace(self):
+        assert parse_selection("  idea-c.md  \n") == "idea-c.md"
+
+    def test_returns_none_on_garbage(self):
+        assert parse_selection("I think we should try something") is None

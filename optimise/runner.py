@@ -176,3 +176,53 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
             break
 
     return best
+
+
+import re
+
+
+def parse_generated_ideas(text):
+    """Parse LLM output into a list of idea dicts.
+
+    Expected format: blocks delimited by --- with FILENAME:, TITLE:, DESCRIPTION: fields.
+    Returns list of {"filename": str, "title": str, "description": str}.
+    """
+    ideas = []
+    blocks = re.split(r"^---\s*$", text.strip(), flags=re.MULTILINE)
+
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+        fname_m = re.search(r"FILENAME:\s*(.+)", block)
+        title_m = re.search(r"TITLE:\s*(.+)", block)
+        desc_m = re.search(r"DESCRIPTION:\s*\n?([\s\S]*?)$", block)
+
+        if fname_m and title_m:
+            ideas.append({
+                "filename": fname_m.group(1).strip(),
+                "title": title_m.group(1).strip(),
+                "description": desc_m.group(1).strip() if desc_m else "",
+            })
+
+    return ideas
+
+
+def parse_selection(text):
+    """Parse LLM selection output to extract a filename.
+
+    Looks for a .md filename in the output. Returns the filename or None.
+    """
+    text = text.strip()
+    # Try backtick-wrapped
+    m = re.search(r"`([a-zA-Z0-9_\-]+\.md)`", text)
+    if m:
+        return m.group(1)
+    # Try bare filename
+    m = re.search(r"([a-zA-Z0-9_\-]+\.md)", text)
+    if m:
+        return m.group(1)
+    # Try just the text if it looks like a filename
+    if re.match(r"^[a-zA-Z0-9_\-]+\.md$", text):
+        return text
+    return None
