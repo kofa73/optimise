@@ -93,3 +93,28 @@ def run_shell_step(name, cmd_str, cwd):
 
     log.info(f"{name}: OK")
     return True, output
+
+
+class TerminationReason(enum.Enum):
+    MAX_ITERATIONS = "max iterations reached"
+    STAGNATION = "no performance improvement"
+    IDEA_EXHAUSTION = "cannot generate new ideas"
+    TIME_LIMIT = "time limit exceeded"
+
+
+def check_termination(iteration, max_iterations, consecutive_perf_failures,
+                      max_consecutive, start_time, max_minutes, todo_count):
+    """Check if any termination condition is met.
+
+    Returns a TerminationReason or None.
+    """
+    if todo_count == 0:
+        return TerminationReason.IDEA_EXHAUSTION
+    if iteration >= max_iterations:
+        return TerminationReason.MAX_ITERATIONS
+    if consecutive_perf_failures >= max_consecutive:
+        return TerminationReason.STAGNATION
+    elapsed_minutes = (time.time() - start_time) / 60
+    if elapsed_minutes >= max_minutes:
+        return TerminationReason.TIME_LIMIT
+    return None

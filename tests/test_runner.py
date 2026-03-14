@@ -124,3 +124,50 @@ class TestRunShellStep:
     def test_failure(self):
         ok, output = run_shell_step("TEST", "false", cwd="/tmp")
         assert not ok
+
+
+from optimise.runner import check_termination, TerminationReason
+
+
+class TestCheckTermination:
+    def test_max_iterations(self):
+        reason = check_termination(
+            iteration=50, max_iterations=50,
+            consecutive_perf_failures=0, max_consecutive=5,
+            start_time=0, max_minutes=300, todo_count=5,
+        )
+        assert reason == TerminationReason.MAX_ITERATIONS
+
+    def test_stagnation(self):
+        reason = check_termination(
+            iteration=10, max_iterations=50,
+            consecutive_perf_failures=5, max_consecutive=5,
+            start_time=0, max_minutes=300, todo_count=5,
+        )
+        assert reason == TerminationReason.STAGNATION
+
+    def test_time_limit(self):
+        import time
+        reason = check_termination(
+            iteration=1, max_iterations=50,
+            consecutive_perf_failures=0, max_consecutive=5,
+            start_time=time.time() - 400 * 60, max_minutes=300, todo_count=5,
+        )
+        assert reason == TerminationReason.TIME_LIMIT
+
+    def test_no_termination(self):
+        import time
+        reason = check_termination(
+            iteration=1, max_iterations=50,
+            consecutive_perf_failures=0, max_consecutive=5,
+            start_time=time.time(), max_minutes=300, todo_count=5,
+        )
+        assert reason is None
+
+    def test_idea_exhaustion(self):
+        reason = check_termination(
+            iteration=1, max_iterations=50,
+            consecutive_perf_failures=0, max_consecutive=5,
+            start_time=0, max_minutes=300, todo_count=0,
+        )
+        assert reason == TerminationReason.IDEA_EXHAUSTION
