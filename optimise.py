@@ -38,8 +38,8 @@ def main():
         do_init(directory)
         print("Done. Edit settings.conf and instructions.md, then run: python optimise.py run")
     elif args.command == "run":
-        print("Run command not yet implemented.")
-        sys.exit(1)
+        from optimise.cli import do_run
+        do_run(args.dir)
     else:
         parser.print_help()
         sys.exit(1)

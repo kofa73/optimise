@@ -41,3 +41,18 @@ class TestInit:
         do_init(str(tmp_path))
         assert (tmp_path / "settings.conf").read_text() == "custom"
         assert (tmp_path / "learnings.md").exists()
+
+
+class TestDoRun:
+    def test_exits_on_missing_settings(self, tmp_path):
+        """do_run should exit with error if settings.conf is missing."""
+        from optimise.cli import do_run
+        with pytest.raises(SystemExit):
+            do_run(str(tmp_path))
+
+    def test_exits_on_invalid_settings(self, tmp_path):
+        """do_run should exit with error if settings are invalid."""
+        from optimise.cli import do_run
+        (tmp_path / "settings.conf").write_text("# empty config\n")
+        with pytest.raises(SystemExit):
+            do_run(str(tmp_path))
