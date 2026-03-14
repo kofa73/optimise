@@ -178,3 +178,51 @@ class TestEvaluateSuccess:
             baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
         )
         assert not ok
+
+
+from optimise.benchmark import format_perf_log, parse_perf_log
+
+
+class TestFormatPerfLog:
+    def test_basic_format(self):
+        rows = [
+            {"user": 0.551, "cpu": 5.372},
+            {"user": 0.123},
+            {"user": 0.234, "cpu": 0.051, "gpu": 0.180},
+        ]
+        text = format_perf_log(rows)
+        assert "# Individual timings" in text
+        assert "# Totals" in text
+        assert "# Averages" in text
+        assert "| user | cpu | gpu |" in text
+        # Check totals: user=0.908, cpu=5.423, gpu=0.180
+        assert "0.908" in text
+        assert "5.423" in text
+
+    def test_single_row(self):
+        rows = [{"user": 1.5}]
+        text = format_perf_log(rows)
+        assert "| user |" in text
+        assert "1.5" in text or "1.500" in text
+
+    def test_averages_exclude_missing(self):
+        rows = [
+            {"user": 1.0, "cpu": 4.0},
+            {"user": 2.0},
+        ]
+        text = format_perf_log(rows)
+        # Average of user: (1.0+2.0)/2 = 1.5
+        # Average of cpu: 4.0/1 = 4.0 (only 1 row has cpu)
+        assert "1.5" in text or "1.500" in text
+
+
+class TestParsePerfLog:
+    def test_round_trip(self):
+        rows = [{"user": 0.551, "cpu": 5.372}, {"user": 0.123}]
+        text = format_perf_log(rows)
+        parsed = parse_perf_log(text)
+        assert len(parsed) == 2
+        assert parsed[0]["user"] == pytest.approx(0.551)
+        assert parsed[0]["cpu"] == pytest.approx(5.372)
+        assert parsed[1]["user"] == pytest.approx(0.123)
+        assert "cpu" not in parsed[1]

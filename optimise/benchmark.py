@@ -147,3 +147,103 @@ def evaluate_success(baseline_rows, result_rows, min_improvement_pct, regression
         f"Reduced sum(user) from {baseline_sum:.3f}s to {result_sum:.3f}s "
         f"(~{improvement_pct:.1f}% improvement)"
     )
+
+
+def _max_decimal_places(rows):
+    """Find the maximum decimal places used across all values."""
+    max_dp = 0
+    for row in rows:
+        for v in row.values():
+            s = f"{v:g}"
+            if "." in s:
+                dp = len(s.split(".")[1])
+                max_dp = max(max_dp, dp)
+    return max(max_dp, 1)  # at least 1
+
+
+def _all_labels(rows):
+    """Collect all labels in order (user first, then sorted rest)."""
+    labels = set()
+    for row in rows:
+        labels.update(row.keys())
+    labels.discard("user")
+    return ["user"] + sorted(labels)
+
+
+def format_perf_log(rows):
+    """Format benchmark rows into a markdown perf log.
+
+    Contains three tables: Individual timings, Totals, Averages.
+    """
+    labels = _all_labels(rows)
+    dp = _max_decimal_places(rows)
+
+    def fmt(v):
+        return f"{v:.{dp}f}"
+
+    def table(header, data_rows):
+        lines = [f"| {' | '.join(labels)} |"]
+        lines.append(f"| {' | '.join('----' for _ in labels)} |")
+        for row in data_rows:
+            cells = []
+            for label in labels:
+                if label in row:
+                    cells.append(fmt(row[label]))
+                else:
+                    cells.append("")
+            lines.append(f"| {' | '.join(cells)} |")
+        return f"# {header}\n" + "\n".join(lines)
+
+    # Totals: missing = 0
+    totals = {}
+    for label in labels:
+        totals[label] = sum(row.get(label, 0) for row in rows)
+
+    # Averages: missing excluded
+    averages = {}
+    for label in labels:
+        values = [row[label] for row in rows if label in row]
+        if values:
+            averages[label] = sum(values) / len(values)
+
+    sections = [
+        table("Individual timings", rows),
+        table("Totals", [totals]),
+        table("Averages", [averages]),
+    ]
+    return "\n\n".join(sections) + "\n"
+
+
+def parse_perf_log(text):
+    """Parse the Individual timings table from a perf log back into row dicts.
+
+    Only parses the first table (Individual timings).
+    """
+    rows = []
+    in_table = False
+    labels = []
+
+    for line in text.split("\n"):
+        line = line.strip()
+        if line.startswith("# Individual timings"):
+            in_table = True
+            continue
+        if in_table and line.startswith("#"):
+            break  # Next section
+        if not in_table or not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if not labels:
+            labels = cells
+            continue
+        if all(c.startswith("-") for c in cells):
+            continue  # separator row
+        row = {}
+        for label, cell in zip(labels, cells):
+            cell = cell.strip()
+            if cell:
+                row[label] = float(cell)
+        if row:
+            rows.append(row)
+
+    return rows
