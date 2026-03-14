@@ -118,3 +118,61 @@ def check_termination(iteration, max_iterations, consecutive_perf_failures,
     if elapsed_minutes >= max_minutes:
         return TerminationReason.TIME_LIMIT
     return None
+
+
+from optimise.benchmark import (
+    parse_bench_output, update_element_best, sum_user,
+    ConvergenceState, BenchmarkError,
+)
+
+
+def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
+                       num_warmup, convergence_threshold_pct,
+                       convergence_tail_runs, early_abort_regression_pct):
+    """Run the benchmark convergence loop.
+
+    Returns element-wise best rows on success.
+    Raises BenchmarkError on early abort or parse failure.
+    """
+    # Warmup
+    for i in range(num_warmup):
+        log.info(f"BENCH warmup {i+1}/{num_warmup}")
+        subprocess.run(
+            bench_cmd, shell=True,
+            capture_output=True, text=True, timeout=600, cwd=cwd,
+        )
+
+    best = None
+    convergence = ConvergenceState(convergence_threshold_pct, convergence_tail_runs)
+    run_idx = 0
+
+    while True:
+        run_idx += 1
+        log.info(f"BENCH run {run_idx}")
+
+        result = subprocess.run(
+            bench_cmd, shell=True,
+            capture_output=True, text=True, timeout=600, cwd=cwd,
+        )
+        rows = parse_bench_output(result.stdout)
+        best = update_element_best(best, rows)
+        current_sum = sum_user(best)
+
+        # Early abort on first real run
+        if run_idx == 1:
+            threshold = baseline_user_sum * (1 + early_abort_regression_pct / 100)
+            if current_sum > threshold:
+                raise BenchmarkError(
+                    f"Benchmark early abort: {current_sum:.3f}s > "
+                    f"{threshold:.3f}s ({early_abort_regression_pct}% worse than baseline)"
+                )
+
+        convergence.update(current_sum)
+        log.info(f"BENCH run {run_idx}: sum(user)={current_sum:.3f}s "
+                 f"(tail={convergence.tail_counter}/{convergence_tail_runs})")
+
+        if convergence.converged:
+            log.info(f"BENCH converged after {run_idx} runs")
+            break
+
+    return best

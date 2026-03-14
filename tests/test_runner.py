@@ -171,3 +171,75 @@ class TestCheckTermination:
             start_time=0, max_minutes=300, todo_count=0,
         )
         assert reason == TerminationReason.IDEA_EXHAUSTION
+
+
+from optimise.runner import run_benchmark_loop
+from optimise.benchmark import BenchmarkError
+
+
+class TestRunBenchmarkLoop:
+    def _make_bench_script(self, tmp_path, outputs):
+        """Create a script that outputs different values each call."""
+        script = tmp_path / "bench.sh"
+        state_file = tmp_path / "call_count"
+        state_file.write_text("0")
+        # Write all outputs to separate files
+        for i, output in enumerate(outputs):
+            (tmp_path / f"output_{i}.txt").write_text(output)
+        script.write_text(f"""\
+#!/bin/bash
+COUNT=$(cat {state_file})
+cat {tmp_path}/output_$COUNT.txt
+echo $((COUNT + 1)) > {state_file}
+""")
+        script.chmod(0o755)
+        return str(script)
+
+    def test_single_run_converges(self, tmp_path):
+        # All runs return same value → converges after tail_runs
+        outputs = ["user=1.000\n"] * 7
+        cmd = self._make_bench_script(tmp_path, outputs)
+        result = run_benchmark_loop(
+            bench_cmd=cmd, cwd=str(tmp_path),
+            baseline_user_sum=2.0,
+            num_warmup=0,
+            convergence_threshold_pct=0.1,
+            convergence_tail_runs=3,
+            early_abort_regression_pct=10,
+        )
+        assert result is not None
+        assert len(result) == 1
+        assert result[0]["user"] == pytest.approx(1.0)
+
+    def test_early_abort_on_regression(self, tmp_path):
+        outputs = ["user=3.000\n"]  # > 10% worse than baseline of 2.0
+        cmd = self._make_bench_script(tmp_path, outputs)
+        with pytest.raises(BenchmarkError, match="early abort"):
+            run_benchmark_loop(
+                bench_cmd=cmd, cwd=str(tmp_path),
+                baseline_user_sum=2.0,
+                num_warmup=0,
+                convergence_threshold_pct=0.1,
+                convergence_tail_runs=3,
+                early_abort_regression_pct=10,
+            )
+
+    def test_warmup_runs_are_skipped(self, tmp_path):
+        # First output is bad (would trigger early abort), but it's warmup
+        outputs = [
+            "user=999.000\n",  # warmup — discarded
+            "user=1.000\n",    # first real run
+            "user=1.000\n",
+            "user=1.000\n",
+            "user=1.000\n",
+        ]
+        cmd = self._make_bench_script(tmp_path, outputs)
+        result = run_benchmark_loop(
+            bench_cmd=cmd, cwd=str(tmp_path),
+            baseline_user_sum=2.0,
+            num_warmup=1,
+            convergence_threshold_pct=0.1,
+            convergence_tail_runs=3,
+            early_abort_regression_pct=10,
+        )
+        assert result[0]["user"] == pytest.approx(1.0)
