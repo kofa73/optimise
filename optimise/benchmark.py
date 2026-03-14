@@ -37,3 +37,69 @@ def parse_bench_output(text):
     if not rows:
         raise BenchmarkError("Benchmark produced no output")
     return rows
+
+
+def update_element_best(best, new_rows):
+    """Update element-wise best (minimum) across benchmark rows.
+
+    Args:
+        best: current best rows (list of dicts), or None for first run
+        new_rows: new benchmark rows (list of dicts)
+
+    Returns new best rows list.
+    """
+    if best is None:
+        # Deep copy on first run
+        return [{k: v for k, v in row.items()} for row in new_rows]
+
+    if len(best) != len(new_rows):
+        raise BenchmarkError(
+            f"Benchmark row count changed: expected {len(best)}, got {len(new_rows)}"
+        )
+
+    result = []
+    for b, n in zip(best, new_rows):
+        row = dict(b)
+        for label, value in n.items():
+            if label in row:
+                row[label] = min(row[label], value)
+            else:
+                row[label] = value
+        result.append(row)
+    return result
+
+
+def sum_user(rows):
+    """Sum the 'user' values across all rows."""
+    return sum(row["user"] for row in rows)
+
+
+class ConvergenceState:
+    """Tracks benchmark convergence using a tail counter.
+
+    The benchmark has converged when improvement stays below threshold_pct
+    for tail_runs consecutive updates.
+    """
+
+    def __init__(self, threshold_pct, tail_runs):
+        self.threshold_pct = threshold_pct
+        self.tail_runs = tail_runs
+        self.reference_sum = None
+        self.tail_counter = 0
+
+    @property
+    def converged(self):
+        return self.tail_counter >= self.tail_runs
+
+    def update(self, current_sum):
+        """Update with new sum(user) value. Call after each benchmark run."""
+        if self.reference_sum is None:
+            self.reference_sum = current_sum
+            return
+
+        improvement_pct = (self.reference_sum - current_sum) / self.reference_sum * 100
+        if improvement_pct >= self.threshold_pct:
+            self.reference_sum = current_sum
+            self.tail_counter = 0
+        else:
+            self.tail_counter += 1
