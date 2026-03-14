@@ -113,3 +113,68 @@ class TestConvergence:
         state.update(9.95)  # 0.5% < 1.0% threshold -> tail=1
         state.update(9.94)  # still < 1.0% from reference -> tail=2
         assert state.converged
+
+
+from optimise.benchmark import evaluate_success
+
+
+class TestEvaluateSuccess:
+    def test_clear_improvement_passes(self):
+        baseline = [{"user": 10.0}, {"user": 10.0}]
+        result = [{"user": 9.0}, {"user": 9.0}]
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+        )
+        assert ok
+        assert pct == pytest.approx(10.0)
+
+    def test_below_min_improvement_fails(self):
+        baseline = [{"user": 10.0}]
+        result = [{"user": 9.96}]
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+        )
+        assert not ok
+        assert "noise" in detail.lower() or "min" in detail.lower()
+
+    def test_regression_fails(self):
+        baseline = [{"user": 10.0}]
+        result = [{"user": 10.5}]
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+        )
+        assert not ok
+
+    def test_individual_regression_exceeds_tradeoff_fails(self):
+        baseline = [{"user": 10.0}, {"user": 10.0}]
+        result = [{"user": 8.0}, {"user": 10.5}]  # row 2 regressed 5%, sum improved 7.5%
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+        )
+        # 7.5% improvement >= 2 * 5% regression = 10% -> FAILS tradeoff
+        assert not ok
+
+    def test_individual_regression_passes_with_enough_improvement(self):
+        baseline = [{"user": 10.0}, {"user": 10.0}]
+        result = [{"user": 7.0}, {"user": 10.2}]  # row 2 regressed 2%, sum improved 14%
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+        )
+        # 14% >= 2 * 2% = 4% -> PASSES
+        assert ok
+
+    def test_zero_tradeoff_ignores_individual_regression(self):
+        baseline = [{"user": 10.0}, {"user": 10.0}]
+        result = [{"user": 5.0}, {"user": 14.0}]  # row 2 regressed 40%, sum improved 5%
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, regression_tradeoff=0
+        )
+        assert ok
+
+    def test_no_improvement_fails(self):
+        baseline = [{"user": 10.0}]
+        result = [{"user": 10.0}]
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+        )
+        assert not ok
