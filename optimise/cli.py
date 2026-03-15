@@ -512,8 +512,9 @@ def _succeed_idea(s, best, improvement_pct, detail, baseline_sum):
     else:
         commit_body = perf_line
 
-    # Commit target repo
-    s.target_git.commit_all(f"{commit_title}\n\n{commit_body}")
+    # Commit target repo (only files under commit_scope)
+    scope = s.settings.get("commit_scope", ["src/"])
+    s.target_git.commit_changed(f"{commit_title}\n\n{commit_body}", scope=scope)
     commit_hash = s.target_git.get_commit_hash()
     log.info(f"SUCCESS: {perf_line} (commit {commit_hash})")
 

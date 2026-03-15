@@ -114,6 +114,68 @@ class TestBranchResolution:
         assert repo.current_branch() == "optimise-test"
 
 
+class TestChangedFiles:
+    def test_returns_modified_tracked_files(self, git_repo):
+        (git_repo / ".gitkeep").write_text("modified")
+        repo = GitRepo(str(git_repo))
+        assert repo.changed_files() == [".gitkeep"]
+
+    def test_excludes_untracked_files(self, git_repo):
+        (git_repo / "untracked.txt").write_text("new")
+        repo = GitRepo(str(git_repo))
+        assert repo.changed_files() == []
+
+    def test_includes_new_tracked_files(self, git_repo):
+        (git_repo / "added.txt").write_text("new")
+        subprocess.run(["git", "add", "added.txt"], cwd=git_repo,
+                        check=True, capture_output=True)
+        repo = GitRepo(str(git_repo))
+        assert "added.txt" in repo.changed_files()
+
+    def test_empty_on_clean_repo(self, git_repo):
+        repo = GitRepo(str(git_repo))
+        assert repo.changed_files() == []
+
+
+class TestCommitChanged:
+    def test_scope_limits_to_matching_prefix(self, git_repo):
+        """Only files under the scope prefix are committed."""
+        (git_repo / "src").mkdir()
+        (git_repo / "tests").mkdir()
+        (git_repo / "src" / "main.c").write_text("code")
+        (git_repo / "tests" / "check.c").write_text("test")
+        subprocess.run(["git", "add", "."], cwd=git_repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=git_repo, check=True, capture_output=True)
+        (git_repo / "src" / "main.c").write_text("optimised")
+        (git_repo / "tests" / "check.c").write_text("modified test")
+        repo = GitRepo(str(git_repo))
+        repo.commit_changed("optimise", scope=["src/"])
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD"],
+            cwd=git_repo, capture_output=True, text=True,
+        )
+        assert "tests/check.c" in result.stdout
+        assert "src/main.c" not in result.stdout
+
+    def test_noop_when_nothing_in_scope(self, git_repo):
+        """No commit when no changed files match scope."""
+        (git_repo / ".gitkeep").write_text("modified")
+        repo = GitRepo(str(git_repo))
+        repo.commit_changed("nothing to do", scope=["src/"])
+        result = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_repo, capture_output=True, text=True,
+        )
+        assert "nothing to do" not in result.stdout
+
+    def test_no_scope_commits_all_changed(self, git_repo):
+        """Without scope, commits all changed tracked files."""
+        (git_repo / ".gitkeep").write_text("modified")
+        repo = GitRepo(str(git_repo))
+        repo.commit_changed("commit all changes")
+        assert not repo.is_dirty()
+
+
 class TestCommitAll:
     def test_stages_and_commits_all(self, git_repo):
         (git_repo / "newfile.txt").write_text("content")

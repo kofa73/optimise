@@ -144,6 +144,17 @@ class TestValidateSettings:
         result = validate_settings(settings, script_repo=str(tmp_path))
         assert result["optimisation_target"] == ["src/main.c"]
 
+    def test_commit_scope_parses_list(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["commit_scope"] = "src/iop/, src/common/"
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["commit_scope"] == ["src/iop/", "src/common/"]
+
+    def test_commit_scope_defaults_to_src(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["commit_scope"] == ["src/"]
+
     def test_nonexistent_instructions_fails(self, tmp_path):
         settings = self._make_valid_settings(tmp_path)
         settings["instructions"] = "nonexistent.md"

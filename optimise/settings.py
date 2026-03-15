@@ -118,6 +118,11 @@ def validate_settings(raw, script_repo):
     if "commit_prefix" not in result:
         result["commit_prefix"] = "perf"
 
+    # Parse commit_scope (comma-separated path prefixes, default: src/)
+    raw_scope = result.get("commit_scope", "src/")
+    scopes = [s.strip() for s in raw_scope.split(",") if s.strip()]
+    result["commit_scope"] = scopes
+
     return result
 
 
@@ -204,6 +209,10 @@ max_dedup_attempts: 10
 # === Git ===
 # Commit message prefix for target repo commits.
 commit_prefix: perf
+
+# Only commit changed files under these path prefixes (comma-separated).
+# Prevents accidentally committing unrelated WIP changes in the target repo.
+commit_scope: src/
 """
 
 INSTRUCTIONS_TEMPLATE = """\

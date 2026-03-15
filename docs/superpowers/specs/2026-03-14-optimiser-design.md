@@ -182,6 +182,10 @@ max_dedup_attempts: 10
 # === Git ===
 # Commit message prefix for target repo commits.
 commit_prefix: perf
+
+# Only commit changed files under these path prefixes (comma-separated).
+# Prevents accidentally committing unrelated WIP changes in the target repo.
+commit_scope: src/
 ```
 
 ### The `init` Command
@@ -546,7 +550,7 @@ BENCHMARK
   failure (parse error) → FAIL_IDEA (outcome: "benchmark error")
 
 SUCCESS_IDEA
-  commit target repo:
+  commit target repo (only files under `commit_scope` prefixes):
     title: "<commit_prefix>: <idea line 1>"
     body: idea description
     trailer: perf summary (computed by script)

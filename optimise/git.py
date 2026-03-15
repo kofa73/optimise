@@ -76,6 +76,22 @@ class GitRepo:
         self._run(["checkout", "HEAD", "--", "."])
         self._run(["clean", "-fd"])
 
+    def changed_files(self):
+        """Return list of tracked files with changes (staged or unstaged).
+
+        Does NOT include untracked files.
+        """
+        result = self._run(["diff", "--name-only", "HEAD"], check=False)
+        staged = self._run(["diff", "--cached", "--name-only", "HEAD"], check=False)
+        files = set()
+        for line in result.stdout.strip().splitlines():
+            if line:
+                files.add(line)
+        for line in staged.stdout.strip().splitlines():
+            if line:
+                files.add(line)
+        return sorted(files)
+
     def commit(self, files, title, body=None):
         """Stage specific files and commit.
 
@@ -89,6 +105,24 @@ class GitRepo:
         message = title
         if body:
             message = f"{title}\n\n{body}"
+        self._run(["commit", "-m", message])
+
+    def commit_changed(self, message, scope=None):
+        """Stage and commit only changed tracked files under scope prefixes.
+
+        Args:
+            message: commit message
+            scope: list of path prefixes to include (e.g. ["src/"]).
+                   If None or empty, includes all changed files.
+        """
+        files = self.changed_files()
+        if scope:
+            files = [f for f in files
+                     if any(f.startswith(s) for s in scope)]
+        if not files:
+            return
+        for f in files:
+            self._run(["add", f])
         self._run(["commit", "-m", message])
 
     def commit_all(self, message):
