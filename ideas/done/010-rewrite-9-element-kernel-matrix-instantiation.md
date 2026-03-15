@@ -38,3 +38,5 @@ outcome: benchmark early abort: obvious regression
 | user | cpu |
 | ---- | ---- |
 | 11.777 | 130.168 |
+
+outcome: not applicable
