@@ -172,7 +172,7 @@ def do_run(directory):
         ai.reset_providers()
 
         if state == StartupState.BASELINE:
-            log.info("=== BASELINE ===")
+            log.info("[BASELINE] Establishing baseline...")
 
             # Build
             ok, output = run_shell_step("BUILD", settings["build_cmd"], cwd=target_repo_path)
@@ -212,7 +212,7 @@ def do_run(directory):
                 f.write(perf_text)
 
             script_git.commit_all(f"{settings['commit_prefix']}: established baseline")
-            log.info(f"Baseline established: sum(user)={sum_user(best):.3f}s")
+            log.info(f"[BASELINE] Established: sum(user)={sum_user(best):.3f}s")
             state = StartupState.GENERATE
             continue
 
@@ -229,7 +229,7 @@ def do_run(directory):
                 )
 
             if gen_result == GenerationResult.LLM_FAILURE:
-                log.warning("All LLM providers failed during idea generation — "
+                log.warning("[GENERATE] All LLM providers failed — "
                             "will retry after cooldown")
                 continue
 
@@ -247,7 +247,7 @@ def do_run(directory):
             todo_files = sorted(list_ideas(directory, "todo"))
             selected = todo_files[0]
             move_idea(directory, selected, "todo", "coding")
-            log.info(f"Selected idea: {selected}")
+            log.info(f"[GENERATE] Selected idea: {selected}")
             retries_left = settings["max_retries"]
             state = StartupState.CODE
             continue
@@ -271,13 +271,13 @@ def do_run(directory):
             prompt = build_implementation_prompt(
                 instructions, learnings, idea_content, target_files, errors,
             )
-            log.info(f"AI: implementing idea: {idea_title[:80]}")
+            log.info(f"[CODE] Implementing idea: {idea_title[:80]}")
             output, rc, provider = ai.call(
                 prompt, tier="best", cwd=target_repo_path, allow_edits=True,
             )
 
             if rc != 0:
-                log.error(f"AI implementation failed ({provider})")
+                log.error(f"[CODE] AI implementation failed ({provider})")
                 retries_left -= 1
                 if retries_left <= 0:
                     state_obj = _BuildState(directory, target_repo_path, target_git,
@@ -292,7 +292,7 @@ def do_run(directory):
 
             # Check if LLM says idea is not applicable
             if parse_not_applicable(output):
-                log.info(f"Idea not applicable: {idea_title[:60]}")
+                log.info(f"[CODE] Idea not applicable: {idea_title[:60]}")
                 state_obj = _BuildState(directory, target_repo_path, target_git,
                                        script_git, settings, idea_file, iteration,
                                        consecutive_perf_failures, start_time)
@@ -523,7 +523,7 @@ def _fail_idea(s, outcome, bench_rows=None):
 
 def _do_review(directory, script_git, ai, instructions, target_repo_path):
     """Run the periodic strategy review."""
-    log.info("=== STRATEGY REVIEW ===")
+    log.info("[REVIEW] Running strategy review...")
     script_git.commit_all("pre-review checkpoint")
 
     done_files = list_ideas(directory, "done")
