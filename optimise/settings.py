@@ -21,7 +21,7 @@ _FLOAT_KEYS = [
 _INT_KEYS = [
     "num_warmup_iterations", "benchmark_convergence_tail_runs",
     "max_retries", "max_iterations", "max_consecutive_perf_failures",
-    "max_runtime_minutes", "review_frequency", "min_ideas", "max_dedup_attempts",
+    "max_runtime_minutes", "review_frequency", "min_ideas",
 ]
 
 
@@ -199,9 +199,6 @@ review_frequency: 3
 # === Ideas ===
 # Minimum number of ideas to maintain in ideas/todo.
 min_ideas: 5
-
-# Maximum dedup attempts when generating ideas before declaring exhaustion.
-max_dedup_attempts: 10
 
 # === Git ===
 # Commit message prefix for target repo commits.

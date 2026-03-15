@@ -76,7 +76,6 @@ class TestValidateSettings:
             "max_runtime_minutes": "300",
             "review_frequency": "3",
             "min_ideas": "5",
-            "max_dedup_attempts": "10",
             "commit_prefix": "perf",
         }
 
