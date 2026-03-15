@@ -24,21 +24,44 @@ PROVIDERS = {
         "env_cleanup": ["CLAUDECODE"],
         "models": {"best": "opus", "normal": "sonnet"},
         "uses_stdin": True,
+        "version_cmd": ["claude", "--version"],
+        "version_parse": lambda s: s.split()[0],  # "2.1.76 (Claude Code)" -> "2.1.76"
+        "built_with": "2.1.76",
     },
     "gemini": {
         "cmd_text": lambda model: [
             "gemini", "--model", model,
-            "Follow the instructions in the provided text.",
+            "-p", "Follow the instructions in the provided text.",
         ],
         "cmd_edit": lambda model: [
             "gemini", "--model", model, "--approval-mode=yolo",
-            "Follow the instructions in the provided text.",
+            "-p", "Follow the instructions in the provided text.",
         ],
         "env_cleanup": [],
         "models": {"best": "pro", "normal": "flash"},
         "uses_stdin": True,
+        "version_cmd": ["gemini", "--version"],
+        "version_parse": lambda s: s.strip(),  # "0.33.1" -> "0.33.1"
+        "built_with": "0.33.1",
     },
 }
+
+
+def get_version(provider_name):
+    """Query the installed version of a provider CLI. Returns version string or None."""
+    spec = PROVIDERS.get(provider_name)
+    if not spec:
+        return None
+    try:
+        result = subprocess.run(
+            spec["version_cmd"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return spec["version_parse"](result.stdout)
+    except (subprocess.TimeoutExpired, OSError, IndexError, ValueError):
+        pass
+    return None
 
 
 class AIRouter:
@@ -46,6 +69,7 @@ class AIRouter:
 
     def __init__(self, providers=None):
         available = []
+        self.version_warnings = {}  # provider -> warning message
         for name in (providers or ["claude", "gemini"]):
             if name not in PROVIDERS:
                 log.warning(f"Unknown AI provider: {name}")
@@ -54,6 +78,7 @@ class AIRouter:
             if shutil.which(binary):
                 available.append(name)
                 log.info(f"AI provider available: {name}")
+                self._check_version(name)
             else:
                 log.warning(f"AI provider not found: {name} ({binary})")
         if not available:
@@ -61,6 +86,20 @@ class AIRouter:
             sys.exit(1)
         self.available_providers = list(available)
         self.providers = list(available)
+
+    def _check_version(self, name):
+        """Compare installed version against built_with and warn on mismatch."""
+        spec = PROVIDERS[name]
+        built = spec["built_with"]
+        installed = get_version(name)
+        if installed is None:
+            log.warning(f"Could not determine {name} CLI version")
+            return
+        if installed != built:
+            msg = (f"{name} CLI version mismatch: script built with "
+                   f"{built} but {installed} is installed")
+            self.version_warnings[name] = msg
+            log.warning(msg)
 
     def reset_providers(self):
         self.providers = list(self.available_providers)
@@ -98,6 +137,12 @@ class AIRouter:
                 return stdout, rc, provider_name
 
             log.warning(f"AI: {provider_name} failed (rc={rc})")
+            if provider_name in self.version_warnings:
+                log.warning(
+                    f"{self.version_warnings[provider_name]}. "
+                    "If the error persists, consider updating the script by "
+                    "showing the error and this warning to a coding agent."
+                )
             if not provider_override:
                 self.disable_provider(provider_name)
             else:

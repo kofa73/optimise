@@ -1868,21 +1868,44 @@ PROVIDERS = {
         "env_cleanup": ["CLAUDECODE"],
         "models": {"best": "opus", "normal": "sonnet"},
         "uses_stdin": True,
+        "version_cmd": ["claude", "--version"],
+        "version_parse": lambda s: s.split()[0],
+        "built_with": "2.1.76",
     },
     "gemini": {
         "cmd_text": lambda model: [
             "gemini", "--model", model,
-            "Follow the instructions in the provided text.",
+            "-p", "Follow the instructions in the provided text.",
         ],
         "cmd_edit": lambda model: [
             "gemini", "--model", model, "--approval-mode=yolo",
-            "Follow the instructions in the provided text.",
+            "-p", "Follow the instructions in the provided text.",
         ],
         "env_cleanup": [],
         "models": {"best": "pro", "normal": "flash"},
         "uses_stdin": True,
+        "version_cmd": ["gemini", "--version"],
+        "version_parse": lambda s: s.strip(),
+        "built_with": "0.33.1",
     },
 }
+
+
+def get_version(provider_name):
+    """Query the installed version of a provider CLI. Returns version string or None."""
+    spec = PROVIDERS.get(provider_name)
+    if not spec:
+        return None
+    try:
+        result = subprocess.run(
+            spec["version_cmd"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return spec["version_parse"](result.stdout)
+    except (subprocess.TimeoutExpired, OSError, IndexError, ValueError):
+        pass
+    return None
 
 
 class AIRouter:
@@ -1890,6 +1913,7 @@ class AIRouter:
 
     def __init__(self, providers=None):
         available = []
+        self.version_warnings = {}
         for name in (providers or ["claude", "gemini"]):
             if name not in PROVIDERS:
                 log.warning(f"Unknown AI provider: {name}")
@@ -1898,6 +1922,7 @@ class AIRouter:
             if shutil.which(binary):
                 available.append(name)
                 log.info(f"AI provider available: {name}")
+                self._check_version(name)
             else:
                 log.warning(f"AI provider not found: {name} ({binary})")
         if not available:
@@ -1942,6 +1967,12 @@ class AIRouter:
                 return stdout, rc, provider_name
 
             log.warning(f"AI: {provider_name} failed (rc={rc})")
+            if provider_name in self.version_warnings:
+                log.warning(
+                    f"{self.version_warnings[provider_name]}. "
+                    "If the error persists, consider updating the script by "
+                    "showing the error and this warning to a coding agent."
+                )
             if not provider_override:
                 self.disable_provider(provider_name)
             else:
