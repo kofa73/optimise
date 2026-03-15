@@ -61,7 +61,7 @@ optimiser/
 │   ├── __init__.py
 │   ├── cli.py               # init + run commands
 │   ├── settings.py          # Config parsing, validation, defaults
-│   ├── state.py             # Idea lifecycle (create, move, dedup), file ops
+│   ├── state.py             # Idea lifecycle (create, move, list), file ops
 │   ├── ai.py                # AIRouter — claude/gemini failover
 │   ├── benchmark.py         # Convergence loop, perf output parsing, stats
 │   ├── git.py               # Two-repo git operations
@@ -173,9 +173,6 @@ review_frequency: 3
 # Minimum number of ideas to maintain in ideas/todo.
 min_ideas: 5
 
-# Maximum dedup attempts when generating ideas before declaring exhaustion.
-max_dedup_attempts: 10
-
 # === Git ===
 # Commit message prefix for target repo commits.
 commit_prefix: perf
@@ -279,28 +276,16 @@ ideas/testing/  → ideas/done/      (quality/benchmark result, pass or fail)
 ### Generation
 
 - Count ideas in `ideas/todo/`.
-- If fewer than `min_ideas`: call LLM to batch-generate `(min_ideas - count)` ideas in one call.
-- Dedup each generated idea against ALL existing ideas in `ideas/{todo,coding,testing,done}/` by comparing titles.
-- Discard duplicates. If still short, call LLM again (up to `max_dedup_attempts` total attempts).
-- Write accepted ideas to `ideas/todo/`.
+- If fewer than `min_ideas`: call LLM to batch-generate `(min_ideas - count)` ideas in a single call.
+- The generation prompt includes all existing idea titles as a hint to avoid repeats.
+- Write all generated ideas to `ideas/todo/`.
 - Commit script repo: "generated N new ideas".
-- If no new ideas after all attempts: terminate (idea exhaustion).
 
 ### Selection
 
-- Script reads all files in `ideas/todo/`, assembles filenames and full content into a prompt.
-- LLM picks one, returns the filename.
-- Script moves the file to `ideas/coding/`.
-
-### Deduplication
-
-Two-layer deduplication:
-
-1. **Script-side (deterministic):** The script compares the title (first line) of each newly generated idea against the titles of all existing idea files across all directories, using case-insensitive exact match. Exact duplicates are discarded without counting against the dedup attempt limit.
-
-2. **Prompt-side (semantic):** The generation prompt includes all existing idea titles: "These ideas already exist (do NOT repeat them): {list of existing titles}". This guards against semantically equivalent ideas with different wording.
-
-`max_dedup_attempts` counts the total number of LLM generation calls (not per-idea). If after that many calls the script still cannot fill `ideas/todo/` to `min_ideas`, it declares idea exhaustion.
+- Pick the first idea lexicographically from `ideas/todo/` (`sorted(list_ideas(...))[0]`).
+- Users can control priority by prefixing filenames (e.g., `001-my-idea`).
+- Move the selected file to `ideas/coding/`.
 
 ---
 
@@ -496,27 +481,19 @@ BASELINE
 GENERATE
   count ideas in ideas/todo/
   if < min_ideas:
-    LLM batch-generates (min_ideas - count) ideas
-    dedup against all existing ideas
-    discard duplicates, retry if still short (up to max_dedup_attempts)
+    LLM batch-generates (min_ideas - count) ideas in a single call
     write new ideas to ideas/todo/
     commit script repo: "generated N new ideas"
-  if ideas/todo/ empty and LLM produced ideas (all filtered by dedup) → TERMINATE (idea exhaustion)
-  if ideas/todo/ empty and LLM failed to produce parseable ideas → retry (loop back to GENERATE)
-  → SELECT
-
-SELECT
-  script reads all ideas/todo/ files, assembles into prompt
-  LLM picks one, returns filename
-  script validates filename exists in ideas/todo/ (if not, retry LLM call up to 3 times;
-    if still invalid, fall back to selecting the first idea alphabetically)
-  script moves file to ideas/coding/
+  if LLM failed to produce parseable ideas → retry (loop back to GENERATE)
+  pick first idea lexicographically from ideas/todo/
+  move to ideas/coding/
   → CODE
 
 CODE
   script builds prompt: instructions + learnings + idea content
   if errors.txt exists: append to prompt with fix instructions
   LLM gets Read + Edit tools for target repo
+  if LLM responds NOT_APPLICABLE → FAIL_IDEA (outcome: "not applicable")
   → BUILD
 
 BUILD
@@ -620,10 +597,6 @@ Three conditions are checked after each idea completes (in CODE and TEST paths):
 2. **Stagnation:** `max_consecutive_perf_failures` consecutive ideas with outcome "performance regression" only. Build failures, quality regressions, benchmark early aborts, and benchmark errors do NOT count — they reflect tooling/coding issues, not exhaustion of the optimisation space.
 3. **Time limit:** `max_runtime_minutes` exceeded.
 
-A fourth condition is checked only in the GENERATE state, after deduplication:
-
-4. **Idea exhaustion:** After attempting to generate ideas (up to `max_dedup_attempts` calls), the LLM produced ideas but ALL were filtered by deduplication — no new, genuine ideas remain. This signals the optimisation space is genuinely exhausted. If the LLM fails to produce any parseable output (not dedup-related), the loop retries via GENERATE without declaring exhaustion. This is NOT checked after CODE/TEST completes — an empty todo at that point simply means the next GENERATE will create more ideas.
-
 Manual stop (Ctrl+C) is handled by startup recovery on next run.
 
 ---
@@ -633,7 +606,7 @@ Manual stop (Ctrl+C) is handled by startup recovery on next run.
 Test-driven development (TDD). Tests written before implementation for each module. The modular package structure supports testing each concern in isolation:
 
 - `test_settings.py` — parsing, validation, defaults, init scaffolding.
-- `test_state.py` — idea file creation, sanitisation, dedup, directory transitions.
+- `test_state.py` — idea file creation, sanitisation, directory transitions.
 - `test_benchmark.py` — output parsing, convergence logic, stats computation, success evaluation.
 - `test_git.py` — branch resolution, commit, rollback, dirty checks (against real or mock git repos).
 - `test_prompts.py` — prompt construction for each role.
