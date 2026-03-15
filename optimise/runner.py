@@ -98,16 +98,12 @@ def run_shell_step(name, cmd_str, cwd):
 class TerminationReason(enum.Enum):
     MAX_ITERATIONS = "max iterations reached"
     STAGNATION = "no performance improvement"
-    IDEA_EXHAUSTION = "cannot generate new ideas"
     TIME_LIMIT = "time limit exceeded"
 
 
 def check_termination(iteration, max_iterations, consecutive_perf_failures,
                       max_consecutive, start_time, max_minutes):
     """Check if any termination condition is met.
-
-    Does NOT check idea exhaustion — that is handled by the GENERATE state
-    after a generation attempt fails.
 
     Returns a TerminationReason or None.
     """
