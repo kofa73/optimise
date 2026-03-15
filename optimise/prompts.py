@@ -48,31 +48,6 @@ Rules:
 """
 
 
-def build_selection_prompt(ideas):
-    """Build prompt for selecting the best idea to try next.
-
-    Args:
-        ideas: dict of {filename: content} for all ideas in todo/
-    """
-    sections = []
-    for filename, content in sorted(ideas.items()):
-        sections.append(f"## {filename}\n\n{content}")
-    ideas_text = "\n\n".join(sections)
-
-    return f"""\
-# Idea Selection
-
-Below are the candidate optimisation ideas. Select the one most likely to
-improve performance. Consider which idea has the best risk/reward ratio.
-
-{ideas_text}
-
-# Your task
-
-Return ONLY the filename of the selected idea (e.g. `my-idea.md`).
-Do not explain your reasoning. Just output the filename.
-"""
-
 
 def build_implementation_prompt(instructions, learnings, idea_content, target_files, errors):
     """Build prompt for implementing an optimisation idea.

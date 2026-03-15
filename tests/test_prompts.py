@@ -2,7 +2,6 @@
 import pytest
 from optimise.prompts import (
     build_generation_prompt,
-    build_selection_prompt,
     build_implementation_prompt,
     build_review_prompt,
 )
@@ -32,15 +31,6 @@ class TestGenerationPrompt:
         )
         assert "src/a.c" in prompt
         assert "src/b.c" in prompt
-
-
-class TestSelectionPrompt:
-    def test_includes_all_ideas(self):
-        ideas = {"idea-a.md": "Title A\n\nBody A", "idea-b.md": "Title B\n\nBody B"}
-        prompt = build_selection_prompt(ideas)
-        assert "idea-a.md" in prompt
-        assert "Title A" in prompt
-        assert "idea-b.md" in prompt
 
 
 class TestImplementationPrompt:
