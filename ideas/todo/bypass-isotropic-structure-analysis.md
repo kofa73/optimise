@@ -1,0 +1,3 @@
+bypass gradient and laplacian computations for fully isotropic diffusion orders
+
+The inner PDE solver unconditionally computes centered finite differences, vector magnitudes, inverse normalizations, and trigonometric components (sine/cosine squared) to build anisotropic structure tensors, even when the user configures specific diffusion orders to be purely isotropic (anisotropy factor of zero). By checking the loop-invariant `isotropy_type` array for the `DT_ISOTROPY_ISOTROPE` state, we can wrap these block-local computations in a conditional and completely bypass the expensive `sqrtf`, divisions, and `dt_vector_exp` operations when the structural analysis will ultimately be discarded by the isotropic kernel builder.
