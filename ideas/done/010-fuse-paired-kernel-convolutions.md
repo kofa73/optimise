@@ -37,3 +37,5 @@ outcome: benchmark error
 | user | cpu |
 | ---- | ---- |
 | 15.482 | 170.532 |
+
+outcome: not applicable
