@@ -278,13 +278,14 @@ ideas/testing/  → ideas/done/      (quality/benchmark result, pass or fail)
 - Count ideas in `ideas/todo/`.
 - If fewer than `min_ideas`: call LLM to batch-generate `(min_ideas - count)` ideas in a single call.
 - The generation prompt includes all existing idea titles as a hint to avoid repeats.
-- Write all generated ideas to `ideas/todo/`.
+- Write all generated ideas to `ideas/todo/`, prefixed with a `yyyy-mm-dd-hh-mm-ss-` timestamp so lexicographic order reflects creation time.
 - Commit script repo: "generated N new ideas".
 
 ### Selection
 
 - Pick the first idea lexicographically from `ideas/todo/` (`sorted(list_ideas(...))[0]`).
-- Users can control priority by prefixing filenames (e.g., `001-my-idea`).
+- Timestamp prefixes ensure FIFO ordering among generated ideas.
+- Users can force priority by prefixing filenames with digits (e.g., `000-urgent`), which sort before any timestamp.
 - Move the selected file to `ideas/coding/`.
 
 ---

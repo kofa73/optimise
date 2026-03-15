@@ -1,6 +1,7 @@
 """Idea lifecycle management and file operations."""
 import os
 import re
+import time
 
 
 def sanitise_filename(name):
@@ -22,9 +23,15 @@ def sanitise_filename(name):
 def create_idea(script_repo, raw_name, content):
     """Create an idea file in ideas/todo/.
 
+    Prefixes the filename with a yyyy-mm-dd-hh-mm-ss timestamp so that
+    lexicographic sorting reflects creation order. User files with numeric
+    prefixes (e.g. 000-urgent) will sort before any timestamped file.
+
     Returns the absolute path to the created file.
     """
     filename = sanitise_filename(raw_name)
+    ts = time.strftime("%Y-%m-%d-%H-%M-%S")
+    filename = f"{ts}-{filename}"
     path = os.path.join(script_repo, "ideas", "todo", filename)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:

@@ -57,6 +57,41 @@ class TestCreateIdea:
         path = create_idea(str(tmp_path), "bad name with spaces.txt", "Title\n\nBody")
         assert "bad_name_with_spaces.md" in path
 
+    def test_prefixes_with_timestamp(self, tmp_path):
+        """Generated ideas get a yyyy-mm-dd-hh-mm-ss prefix for ordering."""
+        import re
+        todo = tmp_path / "ideas" / "todo"
+        todo.mkdir(parents=True)
+        path = create_idea(str(tmp_path), "z-index-optimisation", "Title\n\nBody")
+        filename = os.path.basename(path)
+        # Must start with a timestamp pattern
+        assert re.match(r"\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-", filename), \
+            f"Expected timestamp prefix, got: {filename}"
+        assert filename.endswith("z-index-optimisation.md")
+
+    def test_timestamp_ordering(self, tmp_path):
+        """Ideas created later sort after earlier ones."""
+        import time
+        todo = tmp_path / "ideas" / "todo"
+        todo.mkdir(parents=True)
+        create_idea(str(tmp_path), "z-idea", "First\n\nBody")
+        time.sleep(1.1)  # ensure different second
+        create_idea(str(tmp_path), "a-idea", "Second\n\nBody")
+        ideas = list_ideas(str(tmp_path), "todo")
+        # z-idea was created first, so it should sort before a-idea
+        assert "z-idea" in ideas[0]
+        assert "a-idea" in ideas[1]
+
+    def test_user_prefix_sorts_before_timestamp(self, tmp_path):
+        """User 000- prefix sorts before any timestamp-prefixed idea."""
+        todo = tmp_path / "ideas" / "todo"
+        todo.mkdir(parents=True)
+        create_idea(str(tmp_path), "some-idea", "Generated\n\nBody")
+        # Manually create a user-prioritized idea (no timestamp)
+        (todo / "000-urgent.md").write_text("Urgent idea\n\nDo first.")
+        ideas = list_ideas(str(tmp_path), "todo")
+        assert ideas[0] == "000-urgent.md"
+
 
 class TestListIdeas:
     def test_lists_todo_ideas(self, tmp_path):
