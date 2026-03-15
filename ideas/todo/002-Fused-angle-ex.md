@@ -1,1 +1,0 @@
-Check if the idea "Fused angle, ex" (see commit de4a40f443f6e92784ec1822b6594953307453c5) is still applicable (not that the patch applies cleanly, but rather if the idea/method is still relevant). If yes, implement it.
