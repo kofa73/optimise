@@ -125,6 +125,13 @@ class TestRunShellStep:
         ok, output = run_shell_step("TEST", "false", cwd="/tmp")
         assert not ok
 
+    def test_no_timeout_on_subprocess(self):
+        """Shell steps must not impose a timeout."""
+        with patch("optimise.runner.subprocess.run", wraps=subprocess.run) as mock_run:
+            run_shell_step("TEST", "echo hello", cwd="/tmp")
+        for call in mock_run.call_args_list:
+            assert "timeout" not in call.kwargs
+
 
 from optimise.runner import check_termination, TerminationReason
 
@@ -243,6 +250,24 @@ echo $((COUNT + 1)) > {state_file}
             early_abort_regression_pct=10,
         )
         assert result[0]["user"] == pytest.approx(1.0)
+
+
+    def test_no_timeout_on_subprocess_calls(self, tmp_path):
+        """Benchmark subprocess calls must not impose a timeout."""
+        outputs = ["user=1.000\n"] * 7
+        cmd = self._make_bench_script(tmp_path, outputs)
+        with patch("optimise.runner.subprocess.run", wraps=subprocess.run) as mock_run:
+            run_benchmark_loop(
+                bench_cmd=cmd, cwd=str(tmp_path),
+                baseline_user_sum=2.0,
+                num_warmup=1,
+                convergence_threshold_pct=0.1,
+                convergence_tail_runs=3,
+                early_abort_regression_pct=10,
+            )
+        for call in mock_run.call_args_list:
+            assert "timeout" not in call.kwargs, \
+                f"subprocess.run called with timeout={call.kwargs['timeout']}"
 
 
 from optimise.runner import parse_generated_ideas, parse_selection

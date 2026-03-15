@@ -79,7 +79,7 @@ def run_shell_step(name, cmd_str, cwd):
     log.info(f"{name}: running `{cmd_str[:80]}`...")
     result = subprocess.run(
         cmd_str, shell=True,
-        capture_output=True, text=True, timeout=600, cwd=cwd,
+        capture_output=True, text=True, cwd=cwd,
     )
     output = ""
     if result.stdout:
@@ -139,7 +139,7 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
         log.info(f"BENCH warmup {i+1}/{num_warmup}")
         subprocess.run(
             bench_cmd, shell=True,
-            capture_output=True, text=True, timeout=600, cwd=cwd,
+            capture_output=True, text=True, cwd=cwd,
         )
 
     best = None
@@ -152,7 +152,7 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
 
         result = subprocess.run(
             bench_cmd, shell=True,
-            capture_output=True, text=True, timeout=600, cwd=cwd,
+            capture_output=True, text=True, cwd=cwd,
         )
         rows = parse_bench_output(result.stdout)
         best = update_element_best(best, rows)

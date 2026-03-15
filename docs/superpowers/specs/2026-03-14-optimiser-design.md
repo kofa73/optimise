@@ -68,12 +68,15 @@ optimiser/
 │   ├── prompts.py           # Prompt builders for each LLM step
 │   └── runner.py            # Main orchestration loop (state machine)
 └── tests/
-    ├── test_settings.py
-    ├── test_state.py
+    ├── conftest.py
+    ├── test_ai.py
     ├── test_benchmark.py
+    ├── test_cli.py
     ├── test_git.py
     ├── test_prompts.py
-    └── test_runner.py
+    ├── test_runner.py
+    ├── test_settings.py
+    └── test_state.py
 ```
 
 ### Script Repo (scaffolded by `init`)
@@ -316,7 +319,7 @@ user=0.234, cpu=0.051, gpu=0.180
 
 ### Convergence Loop
 
-The orchestrator handles benchmark repetition and convergence. The external script only needs to run once and print results.
+The orchestrator handles benchmark repetition and convergence. The external script only needs to run once and print results. **No timeouts are imposed on subprocess calls** — benchmarks (and build/quality commands) may run for arbitrarily long periods.
 
 1. **Warmup:** Run `bench_cmd` `num_warmup_iterations` times. Discard all output. No early abort checks during warmup.
 2. **First real run:**
