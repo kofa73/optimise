@@ -1,0 +1,1 @@
+Check if the idea "scalar gradient fetching optimization" (see commit 4739dc2a47165ae42bab3043a4c4595e56182ed3) is still applicable (not that the patch applies cleanly, but rather if the idea/method is still relevant). If yes, implement it.
