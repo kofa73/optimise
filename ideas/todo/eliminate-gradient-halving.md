@@ -1,0 +1,3 @@
+remove 0.5f scaling factor from central difference gradients
+
+The `find_gradients` function currently divides the central spatial differences by `2.0f`. This scaling factor is computationally unnecessary because it cancels out entirely when calculating the normalized `cos` and `sin` ratios (`gradient / magnitude`). While the gradient magnitude itself is also used in the exponential decay (`c2`), we can mathematically absorb this 2x relative scale difference by dividing the pre-computed `anisotropy` user parameters by 2.0f once outside the main loop. Removing the `0.5f` scaling eliminates two multiplications per channel per gradient/laplacian without altering the final mathematical result.

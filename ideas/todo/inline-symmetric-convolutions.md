@@ -1,0 +1,3 @@
+compute convolutions directly using kernel symmetries to reduce multiplications
+
+The 3x3 anisotropic diffusion kernels possess strong spatial symmetry (e.g., corners are `b11` and `-b11`, top/bottom are `a22`, left/right are `a11`, center is `b22`). Instead of expanding these components into full 9-element `kern_*` arrays and performing 9 independent multiplications per pixel for each diffusion order, we can inline the convolution algebraically. By pre-calculating the 4 unique combinations of the neighbor pixels (e.g., `N0 - N2 - N6 + N8`, `N1 + N7`, `N3 + N5`, and `N4`) and multiplying them directly by the unique kernel weights, we reduce the convolution cost from 36 multiplications to just 16 per channel, while completely eliminating the intermediate kernel arrays.
