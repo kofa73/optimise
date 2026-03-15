@@ -419,7 +419,7 @@ def _do_build_test_benchmark(s, retries_left):
         )
     except BenchmarkError as e:
         log.error(f"Benchmark error: {e}")
-        return _fail_idea(s, "benchmark error")
+        return _fail_idea(s, "benchmark error", bench_rows=e.rows)
 
     # Evaluate
     ok, improvement_pct, detail = evaluate_success(
@@ -428,17 +428,11 @@ def _do_build_test_benchmark(s, retries_left):
         s.settings["individual_regression_tradeoff"],
     )
 
-    # Save perf log for this idea
-    idea_stem = s.idea_file.rsplit(".", 1)[0]
-    perf_path = os.path.join(s.script_repo, "perf-logs", f"{idea_stem}-perf.md")
-    with open(perf_path, "w") as f:
-        f.write(format_perf_log(best))
-
     if ok:
         return _succeed_idea(s, best, improvement_pct, detail, baseline_sum)
     else:
         log.info(f"FAILED: {detail}")
-        return _fail_idea(s, "performance regression", perf_saved=True)
+        return _fail_idea(s, "performance regression", bench_rows=best)
 
 
 def _succeed_idea(s, best, improvement_pct, detail, baseline_sum):
@@ -464,21 +458,23 @@ def _succeed_idea(s, best, improvement_pct, detail, baseline_sum):
     log.info(f"SUCCESS: {perf_line} (commit {commit_hash})")
 
     # Move idea to done
+    perf_table = format_perf_log(best)
     move_idea(s.script_repo, s.idea_file, "testing", "done")
     append_outcome(s.script_repo, s.idea_file, "improvement",
-                   commit_hash=commit_hash, perf_summary=perf_line)
+                   commit_hash=commit_hash, perf_summary=perf_line,
+                   perf_table=perf_table)
 
     # Update current best
     current_best_path = os.path.join(s.script_repo, "perf-logs", "current-best-perf.md")
     with open(current_best_path, "w") as f:
-        f.write(format_perf_log(best))
+        f.write(perf_table)
 
     s.script_git.commit_all(f"idea succeeded: {idea_title[:60]}")
 
     return {"consecutive_perf_failures": 0}
 
 
-def _fail_idea(s, outcome, perf_saved=False):
+def _fail_idea(s, outcome, bench_rows=None):
     """Handle a failed idea."""
     # Determine which directory the idea is currently in
     for subdir in ("testing", "coding"):
@@ -487,7 +483,8 @@ def _fail_idea(s, outcome, perf_saved=False):
             move_idea(s.script_repo, s.idea_file, subdir, "done")
             break
 
-    append_outcome(s.script_repo, s.idea_file, outcome)
+    perf_table = format_perf_log(bench_rows) if bench_rows else None
+    append_outcome(s.script_repo, s.idea_file, outcome, perf_table=perf_table)
     s.target_git.rollback()
     clean_errors(s.script_repo)
 

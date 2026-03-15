@@ -1,3 +1,0 @@
-Hoist constant isotropic laplacian kernel outside the per-pixel loop
-
-When an isotropy_type is DT_ISOTROPY_ISOTROPE (anisotropy parameter == 0), the corresponding kernel in compute_kernel() is always the same constant laplacian values (0.25, 0.5, -3, etc.) regardless of per-pixel gradient data. Currently this constant kernel is recomputed for every pixel, and the associated c2/exp computation is also wasted. By checking isotropy_type outside the pixel loop and pre-filling constant kernel arrays, we can skip the per-pixel dt_vector_exp call and compute_kernel call for isotropic orders entirely. Many common presets (denoise, bloom, dehaze) have 2 of 4 orders isotropic, so this would eliminate roughly half of the expensive kernel computation in those cases.

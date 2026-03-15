@@ -4,8 +4,15 @@ import re
 
 
 class BenchmarkError(Exception):
-    """Raised on benchmark parsing or evaluation failures."""
-    pass
+    """Raised on benchmark parsing or evaluation failures.
+
+    Attributes:
+        rows: partial benchmark rows if available (e.g. on early abort),
+              None for parse errors.
+    """
+    def __init__(self, message, rows=None):
+        super().__init__(message)
+        self.rows = rows
 
 
 def parse_bench_output(text):

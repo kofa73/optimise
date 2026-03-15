@@ -118,6 +118,18 @@ class TestAppendOutcome:
         assert "outcome: build failure" in content
         assert "commit:" not in content
 
+    def test_appends_perf_table(self, tmp_path):
+        done = tmp_path / "ideas" / "done"
+        done.mkdir(parents=True)
+        (done / "idea.md").write_text("Title\n\nBody")
+        perf_table = "# Individual timings\n| user |\n| ---- |\n| 1.000 |\n"
+        append_outcome(str(tmp_path), "idea.md", "performance regression",
+                       perf_table=perf_table)
+        content = (done / "idea.md").read_text()
+        assert "outcome: performance regression" in content
+        assert "# Individual timings" in content
+        assert "| 1.000 |" in content
+
 
 class TestAllIdeaTitles:
     def test_collects_from_all_dirs(self, tmp_path):

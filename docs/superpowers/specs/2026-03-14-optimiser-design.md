@@ -241,11 +241,28 @@ commit: a1b2c3d
 Reduced sum(user) from 35.5s to 34.2s (~3.7% improvement)
 ```
 
-On failure:
+On failure (no benchmark ran):
 ```
 outcome: build failure
 ```
-or `outcome: quality regression` or `outcome: performance regression`.
+or `outcome: quality regression`.
+
+On failure (benchmark ran — QA passed but performance check failed):
+```
+outcome: performance regression
+
+# Individual timings
+| user | cpu |
+| ---- | ---- |
+| 0.561 | 5.372 |
+
+# Totals
+...
+```
+
+When the QA gate passes and a benchmark runs, the performance table is always appended to the idea file in `done/`, regardless of whether the idea succeeded or failed. This provides full context for strategy reviews without needing separate perf-log files for failed ideas.
+
+Individual perf-log files in `perf-logs/` are only created for successful ideas.
 
 The perf summary line is always computed by the Python script, never by the LLM.
 
@@ -325,7 +342,7 @@ The orchestrator handles benchmark repetition and convergence. The external scri
 2. **First real run:**
    - Parse output.
    - Store as element-wise best.
-   - Early abort: if `sum(user) > baseline_sum * (1 + early_abort_regression_pct / 100)`, abort benchmark, report failure.
+   - Early abort: if `sum(user) > baseline_sum * (1 + early_abort_regression_pct / 100)`, abort benchmark, report failure. The `BenchmarkError` carries the partial rows so they can be recorded on the idea file.
 3. **Subsequent runs:**
    - Parse output. If output cannot be parsed (missing `user`, wrong number of lines, malformed values), treat as benchmark parse error → FAIL_IDEA (outcome: "benchmark error").
    - Update element-wise best (per-row minimum for each label).
@@ -359,11 +376,11 @@ success
 
 ### Performance Log Files
 
-Stored in `perf-logs/`. Filename derived from idea filename: append `-perf` before extension (e.g. `precompute-half_anisotropy-outside-loop-perf.md`).
+The `perf-logs/` directory contains only two files:
+- `perf-logs/baseline-perf.md` — initial baseline measurement (useful for the final PR).
+- `perf-logs/current-best-perf.md` — updated after each successful optimisation (used to evaluate the next idea).
 
-Special files:
-- `perf-logs/baseline-perf.md` — initial baseline measurement.
-- `perf-logs/current-best-perf.md` — updated after each successful optimisation.
+No per-idea perf-log files are created. Instead, the performance table is appended directly to the idea file in `ideas/done/` whenever a benchmark runs (see Idea File Format above). This includes early-abort results (single-run, no convergence), which are still informative for diagnosing what went wrong.
 
 Format:
 
@@ -532,9 +549,8 @@ SUCCESS_IDEA
     body: idea description
     trailer: perf summary (computed by script)
   get commit hash
-  move idea to ideas/done/, append outcome + commit hash + perf summary
+  move idea to ideas/done/, append outcome + commit hash + perf summary + perf table
   update perf-logs/current-best-perf.md
-  save idea perf log to perf-logs/<idea-name>-perf.md
   commit script repo
   reset consecutive perf failure counter
   → CHECK_TERMINATION
@@ -542,7 +558,7 @@ SUCCESS_IDEA
 FAIL_IDEA
   rollback target repo
   move idea to ideas/done/, append outcome
-  save idea perf log to perf-logs/<idea-name>-perf.md (if benchmark ran)
+  if benchmark ran (incl. early abort): append perf table to idea file
   commit script repo
   increment consecutive perf failure counter (only for "performance regression";
     NOT for "build failure", "quality regression", or "benchmark error")

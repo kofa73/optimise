@@ -163,8 +163,11 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
             threshold = baseline_user_sum * (1 + early_abort_regression_pct / 100)
             if current_sum > threshold:
                 raise BenchmarkError(
-                    f"Benchmark early abort: {current_sum:.3f}s > "
-                    f"{threshold:.3f}s ({early_abort_regression_pct}% worse than baseline)"
+                    f"Benchmark early abort: {current_sum:.3f}s vs "
+                    f"baseline {baseline_user_sum:.3f}s "
+                    f"(>{early_abort_regression_pct}% regression, "
+                    f"threshold {threshold:.3f}s)",
+                    rows=best,
                 )
 
         convergence.update(current_sum)

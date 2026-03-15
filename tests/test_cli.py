@@ -1,7 +1,10 @@
 # tests/test_cli.py
 import os
+import subprocess
 import pytest
-from optimise.cli import do_init
+from optimise.cli import do_init, _BuildState, _succeed_idea, _fail_idea
+from optimise.git import GitRepo
+from optimise.benchmark import format_perf_log
 
 
 class TestInit:
@@ -56,3 +59,116 @@ class TestDoRun:
         (tmp_path / "settings.conf").write_text("# empty config\n")
         with pytest.raises(SystemExit):
             do_run(str(tmp_path))
+
+
+def _init_git(path):
+    """Initialise a git repo at path with an initial commit."""
+    subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "T"], cwd=path, check=True, capture_output=True)
+    (path / ".gitkeep").write_text("")
+    subprocess.run(["git", "add", "."], cwd=path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=path, check=True, capture_output=True)
+
+
+def _make_build_state(tmp_path, idea_file="idea.md", idea_subdir="testing"):
+    """Create script + target repos and a _BuildState ready for succeed/fail."""
+    script = tmp_path / "script"
+    target = tmp_path / "target"
+    script.mkdir()
+    target.mkdir()
+    _init_git(script)
+    _init_git(target)
+
+    for d in ["ideas/todo", "ideas/coding", "ideas/testing", "ideas/done", "perf-logs"]:
+        (script / d).mkdir(parents=True, exist_ok=True)
+
+    # Place idea in the expected subdir
+    (script / "ideas" / idea_subdir / idea_file).write_text(
+        "Skip zero-speed orders\n\nSkip pixel work when speed is 0."
+    )
+
+    # Write a current-best perf log
+    baseline = [{"user": 10.0, "cpu": 100.0}]
+    (script / "perf-logs" / "current-best-perf.md").write_text(format_perf_log(baseline))
+
+    # Make target dirty so rollback has something to do
+    (target / "src.c").write_text("modified")
+    subprocess.run(["git", "add", "src.c"], cwd=target, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "change"], cwd=target, check=True, capture_output=True)
+
+    settings = {
+        "commit_prefix": "perf",
+        "min_improvement_pct": 0.5,
+        "individual_regression_tradeoff": 2,
+    }
+
+    return _BuildState(
+        script_repo=str(script),
+        target_repo_path=str(target),
+        target_git=GitRepo(str(target)),
+        script_git=GitRepo(str(script)),
+        settings=settings,
+        idea_file=idea_file,
+        iteration=1,
+        consecutive_perf_failures=0,
+        start_time=0,
+    )
+
+
+class TestSucceedIdea:
+    def test_no_per_idea_perf_log_file(self, tmp_path):
+        s = _make_build_state(tmp_path)
+        best = [{"user": 9.0, "cpu": 90.0}]
+        _succeed_idea(s, best, improvement_pct=10.0,
+                      detail="test", baseline_sum=10.0)
+        perf_path = tmp_path / "script" / "perf-logs" / "idea-perf.md"
+        assert not perf_path.exists()
+
+    def test_updates_current_best(self, tmp_path):
+        s = _make_build_state(tmp_path)
+        best = [{"user": 9.0, "cpu": 90.0}]
+        _succeed_idea(s, best, improvement_pct=10.0,
+                      detail="test", baseline_sum=10.0)
+        current = (tmp_path / "script" / "perf-logs" / "current-best-perf.md").read_text()
+        assert "9.0" in current
+
+    def test_appends_perf_table_to_idea(self, tmp_path):
+        s = _make_build_state(tmp_path)
+        best = [{"user": 9.0, "cpu": 90.0}]
+        _succeed_idea(s, best, improvement_pct=10.0,
+                      detail="test", baseline_sum=10.0)
+        idea_content = (tmp_path / "script" / "ideas" / "done" / "idea.md").read_text()
+        assert "# Individual timings" in idea_content
+
+
+class TestFailIdea:
+    def test_no_perf_log_file(self, tmp_path):
+        s = _make_build_state(tmp_path)
+        best = [{"user": 11.0, "cpu": 110.0}]
+        _fail_idea(s, "performance regression", bench_rows=best)
+        perf_path = tmp_path / "script" / "perf-logs" / "idea-perf.md"
+        assert not perf_path.exists()
+
+    def test_appends_perf_table_to_idea(self, tmp_path):
+        s = _make_build_state(tmp_path)
+        best = [{"user": 11.0, "cpu": 110.0}]
+        _fail_idea(s, "performance regression", bench_rows=best)
+        idea_content = (tmp_path / "script" / "ideas" / "done" / "idea.md").read_text()
+        assert "# Individual timings" in idea_content
+
+    def test_no_perf_table_without_bench_rows(self, tmp_path):
+        s = _make_build_state(tmp_path, idea_subdir="coding")
+        _fail_idea(s, "build failure")
+        idea_content = (tmp_path / "script" / "ideas" / "done" / "idea.md").read_text()
+        assert "# Individual timings" not in idea_content
+        assert "outcome: build failure" in idea_content
+
+    def test_early_abort_appends_partial_perf_table(self, tmp_path):
+        """Early abort rows (single run, no convergence) are still recorded."""
+        s = _make_build_state(tmp_path)
+        partial = [{"user": 15.0, "cpu": 150.0}]
+        _fail_idea(s, "benchmark error", bench_rows=partial)
+        idea_content = (tmp_path / "script" / "ideas" / "done" / "idea.md").read_text()
+        assert "# Individual timings" in idea_content
+        assert "15.0" in idea_content

@@ -59,7 +59,8 @@ def read_idea(script_repo, subdir, filename):
     return title, body
 
 
-def append_outcome(script_repo, filename, outcome, commit_hash=None, perf_summary=None):
+def append_outcome(script_repo, filename, outcome, commit_hash=None,
+                   perf_summary=None, perf_table=None):
     """Append outcome to an idea file in ideas/done/."""
     path = os.path.join(script_repo, "ideas", "done", filename)
     with open(path, "a") as f:
@@ -68,6 +69,8 @@ def append_outcome(script_repo, filename, outcome, commit_hash=None, perf_summar
             f.write(f"commit: {commit_hash}\n")
         if perf_summary:
             f.write(f"{perf_summary}\n")
+        if perf_table:
+            f.write(f"\n{perf_table}")
 
 
 def all_idea_titles(script_repo):

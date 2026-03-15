@@ -221,7 +221,7 @@ echo $((COUNT + 1)) > {state_file}
     def test_early_abort_on_regression(self, tmp_path):
         outputs = ["user=3.000\n"]  # > 10% worse than baseline of 2.0
         cmd = self._make_bench_script(tmp_path, outputs)
-        with pytest.raises(BenchmarkError, match="early abort"):
+        with pytest.raises(BenchmarkError, match=r"baseline 2\.000s") as exc_info:
             run_benchmark_loop(
                 bench_cmd=cmd, cwd=str(tmp_path),
                 baseline_user_sum=2.0,
@@ -230,6 +230,10 @@ echo $((COUNT + 1)) > {state_file}
                 convergence_tail_runs=3,
                 early_abort_regression_pct=10,
             )
+        # Early abort must carry the partial benchmark rows
+        assert exc_info.value.rows is not None
+        assert len(exc_info.value.rows) == 1
+        assert exc_info.value.rows[0]["user"] == pytest.approx(3.0)
 
     def test_warmup_runs_are_skipped(self, tmp_path):
         # First output is bad (would trigger early abort), but it's warmup
