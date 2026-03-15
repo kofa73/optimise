@@ -52,17 +52,17 @@ from optimise.ai import AIRouter
 from optimise.runner import (
     determine_startup_state, StartupState, TerminationReason,
     check_termination, run_shell_step, run_benchmark_loop,
-    parse_generated_ideas, parse_selection,
+    parse_generated_ideas,
 )
 from optimise.state import (
     list_ideas, move_idea, read_idea, create_idea, append_outcome,
-    all_idea_titles, dedup_title, clean_errors, sanitise_filename,
+    all_idea_titles, clean_errors, sanitise_filename,
 )
 from optimise.benchmark import (
     format_perf_log, parse_perf_log, evaluate_success, sum_user, BenchmarkError,
 )
 from optimise.prompts import (
-    build_generation_prompt, build_selection_prompt,
+    build_generation_prompt,
     build_implementation_prompt, build_review_prompt,
 )
 
@@ -81,16 +81,14 @@ def _read_learnings(directory):
 
 class GenerationResult(enum.Enum):
     OK = "ok"
-    EXHAUSTED = "exhausted"
     LLM_FAILURE = "llm_failure"
 
 
 def _generate_ideas(directory, settings, ai, target_repo_path, instructions, target_files):
-    """Generate ideas and dedup them.
+    """Generate ideas in a single batch.
 
     Returns GenerationResult:
       OK           — ideas were added, or todo already had enough
-      EXHAUSTED    — LLM produced ideas but all were duplicates (genuine exhaustion)
       LLM_FAILURE  — LLM failed to produce any parseable ideas
     """
     todo_count = len(list_ideas(directory, "todo"))
@@ -100,43 +98,25 @@ def _generate_ideas(directory, settings, ai, target_repo_path, instructions, tar
         return GenerationResult.OK
 
     learnings = _read_learnings(directory)
-
     existing_titles = all_idea_titles(directory)
-    attempts = 0
-    any_llm_ideas = False
 
-    while needed > 0 and attempts < settings["max_dedup_attempts"]:
-        attempts += 1
-        prompt = build_generation_prompt(
-            instructions, learnings, existing_titles, needed, target_files,
-        )
-        output, rc, provider = ai.call(
-            prompt, tier="best", cwd=target_repo_path,
-        )
-        if rc != 0:
-            log.warning(f"Idea generation failed ({provider})")
-            continue
-
-        ideas = parse_generated_ideas(output)
-        if ideas:
-            any_llm_ideas = True
-
-        added = 0
-        for idea in ideas:
-            if dedup_title(idea["title"], existing_titles):
-                log.info(f"Dedup: skipping duplicate idea: {idea['title'][:60]}")
-                continue
-            content = f"{idea['title']}\n\n{idea['description']}"
-            create_idea(directory, idea["filename"], content)
-            existing_titles.append(idea["title"])
-            added += 1
-
-        needed = settings["min_ideas"] - len(list_ideas(directory, "todo"))
-
-    if len(list_ideas(directory, "todo")) == 0:
-        if any_llm_ideas:
-            return GenerationResult.EXHAUSTED
+    prompt = build_generation_prompt(
+        instructions, learnings, existing_titles, needed, target_files,
+    )
+    output, rc, provider = ai.call(
+        prompt, tier="best", cwd=target_repo_path,
+    )
+    if rc != 0:
+        log.warning(f"Idea generation failed ({provider})")
         return GenerationResult.LLM_FAILURE
+
+    ideas = parse_generated_ideas(output)
+    if not ideas:
+        return GenerationResult.LLM_FAILURE
+
+    for idea in ideas:
+        content = f"{idea['title']}\n\n{idea['description']}"
+        create_idea(directory, idea["filename"], content)
 
     return GenerationResult.OK
 
@@ -248,12 +228,6 @@ def do_run(directory):
                     f"generated {todo_after - todo_before} new ideas"
                 )
 
-            if gen_result == GenerationResult.EXHAUSTED:
-                reason = TerminationReason.IDEA_EXHAUSTION
-                log.info(f"TERMINATING: {reason.value}")
-                script_git.commit_all(f"optimiser: terminated — {reason.value}")
-                break
-
             if gen_result == GenerationResult.LLM_FAILURE:
                 log.warning("All LLM providers failed during idea generation — "
                             "will retry after cooldown")
@@ -269,31 +243,9 @@ def do_run(directory):
                 script_git.commit_all(f"optimiser: terminated — {reason.value}")
                 break
 
-            # Select
-            todo_files = list_ideas(directory, "todo")
-            ideas_dict = {}
-            for f in todo_files:
-                path = os.path.join(directory, "ideas", "todo", f)
-                with open(path) as fh:
-                    ideas_dict[f] = fh.read()
-
-            prompt = build_selection_prompt(ideas_dict)
-            selected = None
-            for attempt in range(4):  # 1 initial + 3 retries
-                output, rc, provider = ai.call(
-                    prompt, tier="best", cwd=target_repo_path,
-                )
-                if rc == 0:
-                    selected = parse_selection(output)
-                    if selected and selected in todo_files:
-                        break
-                    log.warning(f"Invalid selection: {output[:60]}")
-                    selected = None
-
-            if not selected:
-                selected = todo_files[0]
-                log.warning(f"Falling back to first idea: {selected}")
-
+            # Pick first idea lexicographically
+            todo_files = sorted(list_ideas(directory, "todo"))
+            selected = todo_files[0]
             move_idea(directory, selected, "todo", "coding")
             log.info(f"Selected idea: {selected}")
             retries_left = settings["max_retries"]
