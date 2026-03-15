@@ -1,0 +1,3 @@
+Combine paired kernel convolutions to halve multiply-accumulate count
+
+The inner loop builds 4 separate 9-element kernels and convolves each independently with neighbor pixels (4 x 9 = 36 MAC operations per channel). However, kern_first and kern_second both convolve against the same neighbour_pixel_LF data, and kern_third and kern_fourth both convolve against neighbour_pixel_HF. Instead of 4 separate convolutions, pre-combine the weighted kernels: combined_LF[k] = kern_first[k]*ABCD[0] + kern_second[k]*ABCD[1] and combined_HF[k] = kern_third[k]*ABCD[2] + kern_fourth[k]*ABCD[3], then perform only 2 convolutions (2 x 9 = 18 MACs). This also eliminates the separate 4-iteration accumulation loop for derivatives, cutting the convolution work nearly in half.

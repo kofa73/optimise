@@ -1,0 +1,3 @@
+Eliminate boundary clamping for interior pixels in PDE inner loop
+
+The inner loop computes j_neighbours with MAX/MIN clamping for every pixel, but only pixels within mult columns of the left/right image edge actually need clamping. By splitting the column loop into three regions—left edge (j < mult), interior (mult <= j < width-mult), and right edge (j >= width-mult)—the interior loop can use simple j-1, j, j+1 offsets without any branching or clamping. Similarly, the i_neighbours row clamping can be hoisted and handled by processing edge rows separately. For a typical image with mult=1, this eliminates conditional branches and MIN/MAX calls from over 99% of pixels.
