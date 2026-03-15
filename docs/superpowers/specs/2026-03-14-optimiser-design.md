@@ -417,7 +417,7 @@ Hardcoded: claude and gemini. Same CLI invocation patterns as the current orches
 
 ### Failover
 
-Random provider selection per call. On failure, disable the failed provider. If all providers exhausted, wait 5 minutes, re-enable all, retry. Providers are reset at the start of each main loop iteration.
+Random provider selection per call. On failure, disable the failed provider. If all providers exhausted, wait 5 minutes, re-enable all, retry. This waiting loop runs indefinitely (costs nothing) and is safe to interrupt (Ctrl+C) — no processing is in progress during the wait. Providers are reset at the start of each main loop iteration.
 
 ### Roles
 
@@ -500,7 +500,8 @@ GENERATE
     discard duplicates, retry if still short (up to max_dedup_attempts)
     write new ideas to ideas/todo/
     commit script repo: "generated N new ideas"
-  if ideas/todo/ empty after attempts → TERMINATE (idea exhaustion)
+  if ideas/todo/ empty and LLM produced ideas (all filtered by dedup) → TERMINATE (idea exhaustion)
+  if ideas/todo/ empty and LLM failed to produce parseable ideas → retry (loop back to GENERATE)
   → SELECT
 
 SELECT
@@ -541,6 +542,7 @@ BENCHMARK
   evaluate result (see Section 6)
   success → SUCCESS_IDEA
   failure (performance) → FAIL_IDEA (outcome: "performance regression")
+  failure (early abort) → FAIL_IDEA (outcome: "benchmark early abort: obvious regression")
   failure (parse error) → FAIL_IDEA (outcome: "benchmark error")
 
 SUCCESS_IDEA
@@ -561,15 +563,22 @@ FAIL_IDEA
   if benchmark ran (incl. early abort): append perf table to idea file
   commit script repo
   increment consecutive perf failure counter (only for "performance regression";
-    NOT for "build failure", "quality regression", or "benchmark error")
+    NOT for "build failure", "quality regression", "benchmark early abort: obvious regression", or "benchmark error")
   → CHECK_TERMINATION
 
-CHECK_TERMINATION
+CHECK_TERMINATION (after CODE/TEST)
   max_iterations reached? → TERMINATE
   max_consecutive_perf_failures reached? → TERMINATE
   max_runtime_minutes exceeded? → TERMINATE
   periodic review due (iteration % review_frequency == 0)? → REVIEW
   → GENERATE
+
+Note: idea exhaustion is NOT checked here. An empty todo/ after an idea
+completes is normal — GENERATE will create more. Idea exhaustion is only
+detected in GENERATE after deduplication — when the LLM generates ideas
+but all are duplicates of previously tried ideas (no new, genuine ideas).
+If the LLM fails to produce any parseable output (not dedup-related),
+the loop retries via GENERATE without declaring exhaustion.
 
 The iteration counter increments each time an idea enters CODE (i.e., each
 idea attempt). GENERATE runs that only top up the idea pool without
@@ -604,12 +613,15 @@ The script repo is committed at these points:
 
 ## 9. Termination Conditions
 
-Four conditions, checked after each idea completes:
+Three conditions are checked after each idea completes (in CODE and TEST paths):
 
 1. **Max iterations:** `max_iterations` reached.
-2. **Stagnation:** `max_consecutive_perf_failures` consecutive ideas with outcome "performance regression" only. Build failures, quality regressions, and benchmark errors do NOT count — they reflect tooling/coding issues, not exhaustion of the optimisation space.
-3. **Idea exhaustion:** `max_dedup_attempts` failed to generate any new unique idea.
-4. **Time limit:** `max_runtime_minutes` exceeded.
+2. **Stagnation:** `max_consecutive_perf_failures` consecutive ideas with outcome "performance regression" only. Build failures, quality regressions, benchmark early aborts, and benchmark errors do NOT count — they reflect tooling/coding issues, not exhaustion of the optimisation space.
+3. **Time limit:** `max_runtime_minutes` exceeded.
+
+A fourth condition is checked only in the GENERATE state, after deduplication:
+
+4. **Idea exhaustion:** After attempting to generate ideas (up to `max_dedup_attempts` calls), the LLM produced ideas but ALL were filtered by deduplication — no new, genuine ideas remain. This signals the optimisation space is genuinely exhausted. If the LLM fails to produce any parseable output (not dedup-related), the loop retries via GENERATE without declaring exhaustion. This is NOT checked after CODE/TEST completes — an empty todo at that point simply means the next GENERATE will create more ideas.
 
 Manual stop (Ctrl+C) is handled by startup recovery on next run.
 

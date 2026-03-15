@@ -141,7 +141,7 @@ class TestCheckTermination:
         reason = check_termination(
             iteration=50, max_iterations=50,
             consecutive_perf_failures=0, max_consecutive=5,
-            start_time=0, max_minutes=300, todo_count=5,
+            start_time=0, max_minutes=300,
         )
         assert reason == TerminationReason.MAX_ITERATIONS
 
@@ -149,7 +149,7 @@ class TestCheckTermination:
         reason = check_termination(
             iteration=10, max_iterations=50,
             consecutive_perf_failures=5, max_consecutive=5,
-            start_time=0, max_minutes=300, todo_count=5,
+            start_time=0, max_minutes=300,
         )
         assert reason == TerminationReason.STAGNATION
 
@@ -158,7 +158,7 @@ class TestCheckTermination:
         reason = check_termination(
             iteration=1, max_iterations=50,
             consecutive_perf_failures=0, max_consecutive=5,
-            start_time=time.time() - 400 * 60, max_minutes=300, todo_count=5,
+            start_time=time.time() - 400 * 60, max_minutes=300,
         )
         assert reason == TerminationReason.TIME_LIMIT
 
@@ -167,17 +167,19 @@ class TestCheckTermination:
         reason = check_termination(
             iteration=1, max_iterations=50,
             consecutive_perf_failures=0, max_consecutive=5,
-            start_time=time.time(), max_minutes=300, todo_count=5,
+            start_time=time.time(), max_minutes=300,
         )
         assert reason is None
 
-    def test_idea_exhaustion(self):
+    def test_empty_todo_does_not_terminate(self):
+        """Empty todo is normal after an idea completes — not exhaustion."""
+        import time
         reason = check_termination(
             iteration=1, max_iterations=50,
             consecutive_perf_failures=0, max_consecutive=5,
-            start_time=0, max_minutes=300, todo_count=0,
+            start_time=time.time(), max_minutes=300,
         )
-        assert reason == TerminationReason.IDEA_EXHAUSTION
+        assert reason is None
 
 
 from optimise.runner import run_benchmark_loop

@@ -103,13 +103,14 @@ class TerminationReason(enum.Enum):
 
 
 def check_termination(iteration, max_iterations, consecutive_perf_failures,
-                      max_consecutive, start_time, max_minutes, todo_count):
+                      max_consecutive, start_time, max_minutes):
     """Check if any termination condition is met.
+
+    Does NOT check idea exhaustion — that is handled by the GENERATE state
+    after a generation attempt fails.
 
     Returns a TerminationReason or None.
     """
-    if todo_count == 0:
-        return TerminationReason.IDEA_EXHAUSTION
     if iteration >= max_iterations:
         return TerminationReason.MAX_ITERATIONS
     if consecutive_perf_failures >= max_consecutive:

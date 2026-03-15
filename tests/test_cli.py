@@ -2,7 +2,11 @@
 import os
 import subprocess
 import pytest
-from optimise.cli import do_init, _BuildState, _succeed_idea, _fail_idea
+from unittest.mock import MagicMock
+from optimise.cli import (
+    do_init, _BuildState, _succeed_idea, _fail_idea,
+    _generate_ideas, GenerationResult,
+)
 from optimise.git import GitRepo
 from optimise.benchmark import format_perf_log
 
@@ -116,6 +120,102 @@ def _make_build_state(tmp_path, idea_file="idea.md", idea_subdir="testing"):
     )
 
 
+class TestGenerateIdeas:
+    def _setup(self, tmp_path):
+        """Create script repo with idea directories and a learnings file."""
+        script = tmp_path / "script"
+        script.mkdir()
+        for d in ["ideas/todo", "ideas/coding", "ideas/testing", "ideas/done"]:
+            (script / d).mkdir(parents=True)
+        (script / "learnings.md").write_text("## What works\n\n## What to avoid\n")
+        (script / "instructions.md").write_text("Optimise for speed.\n")
+        return str(script)
+
+    def _make_ai(self, outputs):
+        """Create a mock AI that returns outputs in order.
+
+        Each output is (text, rc, provider).
+        """
+        ai = MagicMock()
+        ai.call = MagicMock(side_effect=outputs)
+        return ai
+
+    def test_adds_new_ideas(self, tmp_path):
+        """Generation produces new non-duplicate ideas → added."""
+        script_repo = self._setup(tmp_path)
+        ai = self._make_ai([
+            ("---\nFILENAME: idea-a\nTITLE: Unroll inner loop\nDESCRIPTION:\nUnroll.\n---\n",
+             0, "test-provider"),
+        ])
+        result = _generate_ideas(
+            directory=script_repo, settings={"min_ideas": 1, "max_dedup_attempts": 3},
+            ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
+        )
+        assert result == GenerationResult.OK
+        from optimise.state import list_ideas
+        assert len(list_ideas(script_repo, "todo")) == 1
+
+    def test_all_duplicates_returns_exhaustion(self, tmp_path):
+        """LLM produces ideas but all are duplicates → EXHAUSTED."""
+        script_repo = self._setup(tmp_path)
+        # Pre-populate an existing idea in done/
+        (tmp_path / "script" / "ideas" / "done" / "old.md").write_text(
+            "Unroll inner loop\n\nAlready tried."
+        )
+        ai = self._make_ai([
+            ("---\nFILENAME: idea-a\nTITLE: Unroll inner loop\nDESCRIPTION:\nSame.\n---\n",
+             0, "test-provider"),
+        ] * 3)  # 3 attempts, all produce the same duplicate
+        result = _generate_ideas(
+            directory=script_repo, settings={"min_ideas": 1, "max_dedup_attempts": 3},
+            ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
+        )
+        assert result == GenerationResult.EXHAUSTED
+
+    def test_llm_failure_returns_llm_failure(self, tmp_path):
+        """LLM fails every call (rc != 0) → LLM_FAILURE, NOT exhaustion."""
+        script_repo = self._setup(tmp_path)
+        ai = self._make_ai([
+            ("", 1, "test-provider"),
+        ] * 3)
+        result = _generate_ideas(
+            directory=script_repo, settings={"min_ideas": 1, "max_dedup_attempts": 3},
+            ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
+        )
+        assert result == GenerationResult.LLM_FAILURE
+
+    def test_no_generation_needed_returns_ok(self, tmp_path):
+        """If todo already has enough ideas, no generation needed → OK."""
+        script_repo = self._setup(tmp_path)
+        (tmp_path / "script" / "ideas" / "todo" / "existing.md").write_text("Existing idea\n\nDo this.")
+        ai = self._make_ai([])  # should not be called
+        result = _generate_ideas(
+            directory=script_repo, settings={"min_ideas": 1, "max_dedup_attempts": 3},
+            ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
+        )
+        assert result == GenerationResult.OK
+        assert ai.call.call_count == 0
+
+    def test_partial_duplicates_returns_ok(self, tmp_path):
+        """LLM produces mix of new and duplicate ideas → OK (some added)."""
+        script_repo = self._setup(tmp_path)
+        (tmp_path / "script" / "ideas" / "done" / "old.md").write_text(
+            "Unroll inner loop\n\nAlready tried."
+        )
+        ai = self._make_ai([
+            ("---\nFILENAME: idea-a\nTITLE: Unroll inner loop\nDESCRIPTION:\nDupe.\n"
+             "---\n---\nFILENAME: idea-b\nTITLE: Vectorise multiply\nDESCRIPTION:\nNew.\n---\n",
+             0, "test-provider"),
+        ])
+        result = _generate_ideas(
+            directory=script_repo, settings={"min_ideas": 1, "max_dedup_attempts": 3},
+            ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
+        )
+        assert result == GenerationResult.OK
+        from optimise.state import list_ideas
+        assert len(list_ideas(script_repo, "todo")) == 1
+
+
 class TestSucceedIdea:
     def test_no_per_idea_perf_log_file(self, tmp_path):
         s = _make_build_state(tmp_path)
@@ -168,7 +268,7 @@ class TestFailIdea:
         """Early abort rows (single run, no convergence) are still recorded."""
         s = _make_build_state(tmp_path)
         partial = [{"user": 15.0, "cpu": 150.0}]
-        _fail_idea(s, "benchmark error", bench_rows=partial)
+        _fail_idea(s, "benchmark early abort: obvious regression", bench_rows=partial)
         idea_content = (tmp_path / "script" / "ideas" / "done" / "idea.md").read_text()
         assert "# Individual timings" in idea_content
         assert "15.0" in idea_content
