@@ -306,7 +306,7 @@ echo $((COUNT + 1)) > {state_file}
                 f"subprocess.run called with timeout={call.kwargs['timeout']}"
 
 
-from optimise.runner import parse_generated_ideas, parse_selection
+from optimise.runner import parse_generated_ideas
 
 
 class TestParseGeneratedIdeas:
@@ -338,15 +338,3 @@ Replace the for loop with explicit scalar operations.
         assert ideas == []
 
 
-class TestParseSelection:
-    def test_extracts_filename(self):
-        assert parse_selection("idea-a.md\n") == "idea-a.md"
-
-    def test_extracts_from_backticks(self):
-        assert parse_selection("The best idea is `idea-b.md`") == "idea-b.md"
-
-    def test_strips_whitespace(self):
-        assert parse_selection("  idea-c.md  \n") == "idea-c.md"
-
-    def test_returns_none_on_garbage(self):
-        assert parse_selection("I think we should try something") is None

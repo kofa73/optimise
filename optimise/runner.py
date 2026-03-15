@@ -212,21 +212,3 @@ def parse_generated_ideas(text):
     return ideas
 
 
-def parse_selection(text):
-    """Parse LLM selection output to extract a filename.
-
-    Looks for a .md filename in the output. Returns the filename or None.
-    """
-    text = text.strip()
-    # Try backtick-wrapped
-    m = re.search(r"`([a-zA-Z0-9_\-]+\.md)`", text)
-    if m:
-        return m.group(1)
-    # Try bare filename
-    m = re.search(r"([a-zA-Z0-9_\-]+\.md)", text)
-    if m:
-        return m.group(1)
-    # Try just the text if it looks like a filename
-    if re.match(r"^[a-zA-Z0-9_\-]+\.md$", text):
-        return text
-    return None
