@@ -59,6 +59,15 @@ class TestImplementationPrompt:
                        or "PROHIBITED" in line or "NEVER" in line]
         assert len(prohibitions) >= 3
 
+    def test_includes_applicability_check(self):
+        prompt = build_implementation_prompt(
+            instructions="", learnings="",
+            idea_content="idea",
+            target_files=["f.c"],
+            errors=None,
+        )
+        assert "NOT_APPLICABLE" in prompt
+
     def test_includes_errors_when_present(self):
         prompt = build_implementation_prompt(
             instructions="", learnings="",

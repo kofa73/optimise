@@ -248,3 +248,19 @@ class TestFailIdea:
         assert "# Individual timings" in idea_content
         assert "15.0" in idea_content
         assert "15.000s vs baseline 10.000s" in idea_content
+
+
+class TestNotApplicable:
+    """Test that NOT_APPLICABLE LLM response is detected correctly."""
+
+    def test_parse_not_applicable_positive(self):
+        from optimise.runner import parse_not_applicable
+        assert parse_not_applicable("NOT_APPLICABLE\nCode already changed.") is True
+        assert parse_not_applicable("NOT_APPLICABLE") is True
+        assert parse_not_applicable("  NOT_APPLICABLE  \nreason") is True
+
+    def test_parse_not_applicable_negative(self):
+        from optimise.runner import parse_not_applicable
+        assert parse_not_applicable("I have made the edits.") is False
+        assert parse_not_applicable("") is False
+        assert parse_not_applicable("NOT_APPLICABLE is not the right answer") is False

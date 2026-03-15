@@ -89,14 +89,18 @@ Implement this optimisation idea by editing the target files ({targets}):
 
 ## CRITICAL RULES — READ EVERY ONE
 
-1. Use the Read tool to read the target files. Use Edit to make changes.
-2. Make ONLY the changes described in the idea. Do not refactor other code.
+1. First, read the target files and assess whether this idea is still applicable
+   given the current state of the code. If the optimisation has already been applied,
+   or the code structure has changed making it infeasible, respond with exactly
+   `NOT_APPLICABLE` on the first line, followed by a brief explanation. Do nothing else.
+2. Otherwise, use the Read tool to read the target files. Use Edit to make changes.
+3. Make ONLY the changes described in the idea. Do not refactor other code.
 
-3. **YOU MUST NOT RUN ANY BUILD COMMANDS. THIS IS FORBIDDEN.**
-4. **YOU MUST NOT RUN ANY TEST COMMANDS. THIS IS PROHIBITED.**
-5. **YOU MUST NOT RUN ANY BENCHMARK COMMANDS. YOU WILL BE PENALIZED.**
-6. **YOU MUST NEVER USE SHELL/BASH TOOLS TO EXECUTE ANYTHING.**
-7. **IF YOU ATTEMPT TO BUILD, TEST, OR BENCHMARK, THE SESSION WILL BE TERMINATED.**
+4. **YOU MUST NOT RUN ANY BUILD COMMANDS. THIS IS FORBIDDEN.**
+5. **YOU MUST NOT RUN ANY TEST COMMANDS. THIS IS PROHIBITED.**
+6. **YOU MUST NOT RUN ANY BENCHMARK COMMANDS. YOU WILL BE PENALIZED.**
+7. **YOU MUST NEVER USE SHELL/BASH TOOLS TO EXECUTE ANYTHING.**
+8. **IF YOU ATTEMPT TO BUILD, TEST, OR BENCHMARK, THE SESSION WILL BE TERMINATED.**
 
 The orchestrator script handles ALL building, testing, and benchmarking
 after you return control. Your ONLY job is to edit the source files.

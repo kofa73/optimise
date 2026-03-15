@@ -52,7 +52,7 @@ from optimise.ai import AIRouter
 from optimise.runner import (
     determine_startup_state, StartupState, TerminationReason,
     check_termination, run_shell_step, run_benchmark_loop,
-    parse_generated_ideas,
+    parse_generated_ideas, parse_not_applicable,
 )
 from optimise.state import (
     list_ideas, move_idea, read_idea, create_idea, append_outcome,
@@ -288,6 +288,16 @@ def do_run(directory):
                     state = StartupState.GENERATE
                 else:
                     state = StartupState.CODE
+                continue
+
+            # Check if LLM says idea is not applicable
+            if parse_not_applicable(output):
+                log.info(f"Idea not applicable: {idea_title[:60]}")
+                state_obj = _BuildState(directory, target_repo_path, target_git,
+                                       script_git, settings, idea_file, iteration,
+                                       consecutive_perf_failures, start_time)
+                _fail_idea(state_obj, "not applicable")
+                state = StartupState.GENERATE
                 continue
 
             state_obj = _BuildState(directory, target_repo_path, target_git,
