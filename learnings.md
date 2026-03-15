@@ -10,4 +10,3 @@
 - **Conditional branching to skip work:** Adding conditionals to skip zero-contribution computation causes benchmark errors (skip-zero-speed-orders) — even when checks are outside the pixel loop. The code path changes alter floating-point accumulation and break bit-exactness.
 - **Over-merging loops:** Fusing fundamentally different computational stages causes register spilling, breaks auto-vectorization, or destroys cache locality.
 - **Fast-math/precision reductions:** Lower-precision intrinsics or `#pragma GCC optimize("fast-math")` cause regression test failures due to strict numerical precision requirements.
-- **Assuming optimizations transfer across workloads:** rewrite-9-element-kernel-matrix-instantiation succeeded on one dataset but regressed on another. Always benchmark on the target workload — compiler behavior and cache effects are data-dependent.
