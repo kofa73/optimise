@@ -85,11 +85,6 @@ def all_idea_titles(script_repo):
     return titles
 
 
-def dedup_title(title, existing_titles):
-    """Check if a title (case-insensitive) exists in the list of titles."""
-    title_lower = title.lower()
-    return any(title_lower == t.lower() for t in existing_titles)
-
 
 def clean_errors(script_repo):
     """Remove ideas/coding/errors.txt if it exists."""

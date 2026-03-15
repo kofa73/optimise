@@ -2,7 +2,7 @@
 import pytest
 import os
 from optimise.state import sanitise_filename, create_idea, list_ideas, move_idea, \
-    read_idea, append_outcome, all_idea_titles, dedup_title, clean_errors, save_errors
+    read_idea, append_outcome, all_idea_titles, clean_errors, save_errors
 
 
 class TestSanitiseFilename:
@@ -140,19 +140,6 @@ class TestAllIdeaTitles:
         titles = all_idea_titles(str(tmp_path))
         assert set(titles) == {"Title A", "Title B"}
 
-
-class TestDedupTitle:
-    def test_exact_match_is_duplicate(self):
-        assert dedup_title("My Idea", ["My Idea", "Other"]) is True
-
-    def test_case_insensitive(self):
-        assert dedup_title("my idea", ["My Idea"]) is True
-
-    def test_no_match(self):
-        assert dedup_title("New Idea", ["Old Idea"]) is False
-
-    def test_empty_list(self):
-        assert dedup_title("Idea", []) is False
 
 
 class TestCleanErrors:
