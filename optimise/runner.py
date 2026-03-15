@@ -129,7 +129,7 @@ from optimise.benchmark import (
 
 def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
                        num_warmup, convergence_threshold_pct,
-                       convergence_tail_runs, early_abort_regression_pct):
+                       convergence_tail_runs, min_improvement_pct):
     """Run the benchmark convergence loop.
 
     Returns element-wise best rows on success.
@@ -159,15 +159,15 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
         best = update_element_best(best, rows)
         current_sum = sum_user(best)
 
-        # Early abort on first real run
+        # Early abort on first real run: must already beat improvement threshold
         if run_idx == 1:
-            threshold = baseline_user_sum * (1 + early_abort_regression_pct / 100)
+            threshold = baseline_user_sum * (1 - min_improvement_pct / 100)
             if current_sum > threshold:
+                improvement_pct = (1 - current_sum / baseline_user_sum) * 100
                 raise BenchmarkError(
                     f"Benchmark early abort: {current_sum:.3f}s vs "
                     f"baseline {baseline_user_sum:.3f}s "
-                    f"(>{early_abort_regression_pct}% regression, "
-                    f"threshold {threshold:.3f}s)",
+                    f"({improvement_pct:+.1f}%, need {min_improvement_pct}%)",
                     rows=best,
                 )
 

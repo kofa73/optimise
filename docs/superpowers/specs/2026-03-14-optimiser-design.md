@@ -139,9 +139,6 @@ min_improvement_pct: 0.5
 # 0 = ignore individual regressions; very large value = reject any regression.
 individual_regression_tradeoff: 2
 
-# Abort benchmark early if first real run regresses by more than this (percent).
-early_abort_regression_pct: 10
-
 # === Benchmark Convergence ===
 # Number of warmup iterations (output discarded) before real measurement.
 num_warmup_iterations: 0
@@ -346,7 +343,7 @@ The orchestrator handles benchmark repetition and convergence. The external scri
 2. **First real run:**
    - Parse output.
    - Store as element-wise best.
-   - Early abort: if `sum(user) > baseline_sum * (1 + early_abort_regression_pct / 100)`, abort benchmark, report failure. The `BenchmarkError` carries the partial rows so they can be recorded on the idea file.
+   - Early abort: if `sum(user) > baseline_sum * (1 - min_improvement_pct / 100)`, the first run doesn't meet the improvement threshold — abort benchmark, report failure. This catches both regressions and insufficient improvements, avoiding ~30 min of futile convergence runs. The `BenchmarkError` carries the partial rows so they can be recorded on the idea file.
 3. **Subsequent runs:**
    - Parse output. If output cannot be parsed (missing `user`, wrong number of lines, malformed values), treat as benchmark parse error → FAIL_IDEA (outcome: "benchmark error").
    - Update element-wise best (per-row minimum for each label).

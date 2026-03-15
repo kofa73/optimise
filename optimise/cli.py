@@ -216,7 +216,7 @@ def do_run(directory):
                     num_warmup=settings["num_warmup_iterations"],
                     convergence_threshold_pct=settings["benchmark_convergence_threshold_pct"],
                     convergence_tail_runs=settings["benchmark_convergence_tail_runs"],
-                    early_abort_regression_pct=settings["early_abort_regression_pct"],
+                    min_improvement_pct=settings["min_improvement_pct"],
                 )
             except BenchmarkError as e:
                 log.error(f"Baseline benchmark failed: {e}")
@@ -472,7 +472,7 @@ def _do_build_test_benchmark(s, retries_left):
             num_warmup=s.settings["num_warmup_iterations"],
             convergence_threshold_pct=s.settings["benchmark_convergence_threshold_pct"],
             convergence_tail_runs=s.settings["benchmark_convergence_tail_runs"],
-            early_abort_regression_pct=s.settings["early_abort_regression_pct"],
+            min_improvement_pct=s.settings["min_improvement_pct"],
         )
     except BenchmarkError as e:
         log.error(f"Benchmark error: {e}")

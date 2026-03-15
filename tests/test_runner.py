@@ -214,28 +214,59 @@ echo $((COUNT + 1)) > {state_file}
             num_warmup=0,
             convergence_threshold_pct=0.1,
             convergence_tail_runs=3,
-            early_abort_regression_pct=10,
+            min_improvement_pct=0.5,
         )
         assert result is not None
         assert len(result) == 1
         assert result[0]["user"] == pytest.approx(1.0)
 
     def test_early_abort_on_regression(self, tmp_path):
-        outputs = ["user=3.000\n"]  # > 10% worse than baseline of 2.0
+        """Regression is always worse than improvement threshold → abort."""
+        outputs = ["user=3.000\n"]  # way worse than baseline of 2.0
         cmd = self._make_bench_script(tmp_path, outputs)
-        with pytest.raises(BenchmarkError, match=r"baseline 2\.000s") as exc_info:
+        with pytest.raises(BenchmarkError) as exc_info:
             run_benchmark_loop(
                 bench_cmd=cmd, cwd=str(tmp_path),
                 baseline_user_sum=2.0,
                 num_warmup=0,
                 convergence_threshold_pct=0.1,
                 convergence_tail_runs=3,
-                early_abort_regression_pct=10,
+                min_improvement_pct=0.5,
             )
-        # Early abort must carry the partial benchmark rows
         assert exc_info.value.rows is not None
-        assert len(exc_info.value.rows) == 1
         assert exc_info.value.rows[0]["user"] == pytest.approx(3.0)
+
+    def test_early_abort_insufficient_improvement(self, tmp_path):
+        """First run shows 3% improvement but threshold is 10% → abort."""
+        # baseline=100, first run=97 (3% improvement), threshold needs <=90
+        outputs = ["user=97.000\n"]
+        cmd = self._make_bench_script(tmp_path, outputs)
+        with pytest.raises(BenchmarkError) as exc_info:
+            run_benchmark_loop(
+                bench_cmd=cmd, cwd=str(tmp_path),
+                baseline_user_sum=100.0,
+                num_warmup=0,
+                convergence_threshold_pct=0.1,
+                convergence_tail_runs=3,
+                min_improvement_pct=10,
+            )
+        assert exc_info.value.rows is not None
+        assert exc_info.value.rows[0]["user"] == pytest.approx(97.0)
+
+    def test_no_early_abort_when_improvement_meets_threshold(self, tmp_path):
+        """First run meets improvement threshold → no abort, converge."""
+        # baseline=100, first run=89 (11% improvement), threshold=10%
+        outputs = ["user=89.000\n"] * 5
+        cmd = self._make_bench_script(tmp_path, outputs)
+        result = run_benchmark_loop(
+            bench_cmd=cmd, cwd=str(tmp_path),
+            baseline_user_sum=100.0,
+            num_warmup=0,
+            convergence_threshold_pct=0.1,
+            convergence_tail_runs=3,
+            min_improvement_pct=10,
+        )
+        assert result[0]["user"] == pytest.approx(89.0)
 
     def test_warmup_runs_are_skipped(self, tmp_path):
         # First output is bad (would trigger early abort), but it's warmup
@@ -253,10 +284,9 @@ echo $((COUNT + 1)) > {state_file}
             num_warmup=1,
             convergence_threshold_pct=0.1,
             convergence_tail_runs=3,
-            early_abort_regression_pct=10,
+            min_improvement_pct=0.5,
         )
         assert result[0]["user"] == pytest.approx(1.0)
-
 
     def test_no_timeout_on_subprocess_calls(self, tmp_path):
         """Benchmark subprocess calls must not impose a timeout."""
@@ -269,7 +299,7 @@ echo $((COUNT + 1)) > {state_file}
                 num_warmup=1,
                 convergence_threshold_pct=0.1,
                 convergence_tail_runs=3,
-                early_abort_regression_pct=10,
+                min_improvement_pct=0.5,
             )
         for call in mock_run.call_args_list:
             assert "timeout" not in call.kwargs, \

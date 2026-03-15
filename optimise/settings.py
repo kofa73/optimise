@@ -14,7 +14,7 @@ _REQUIRED_STRING_KEYS = ["target_repo", "branch", "optimisation_target", "instru
 # Keys that are converted to float
 _FLOAT_KEYS = [
     "min_improvement_pct", "individual_regression_tradeoff",
-    "early_abort_regression_pct", "benchmark_convergence_threshold_pct",
+    "benchmark_convergence_threshold_pct",
 ]
 
 # Keys that are converted to int
@@ -165,9 +165,6 @@ min_improvement_pct: 0.5
 # this multiplier times the worst individual row regression percent.
 # 0 = ignore individual regressions; very large value = reject any regression.
 individual_regression_tradeoff: 2
-
-# Abort benchmark early if first real run regresses by more than this (percent).
-early_abort_regression_pct: 10
 
 # === Benchmark Convergence ===
 # Number of warmup iterations (output discarded) before real measurement.
