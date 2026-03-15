@@ -1,0 +1,4 @@
+Skip all per-pixel work for diffusion orders with zero speed
+
+When a diffusion speed parameter (first/second/third/fourth) is zero, the corresponding ABCD coefficient is zero and that order contributes nothing to the result. Currently the code still computes gradients, exp(c2), rotation matrices, kernels, and convolutions for these zero-contribution orders at every pixel. By checking which ABCD values are nonzero before entering the pixel loop (once per scale, not per pixel), we can skip the gradient normalization, dt_vector_exp, compute_kernel, and convolution for dead orders. Many presets set 1-2 speeds to zero (e.g., denoise sets second=fourth=0), which would eliminate 25-50% of per-pixel computation.
+outcome: benchmark error
