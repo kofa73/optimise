@@ -1,3 +1,0 @@
-Pair the 4 `compute_convolution` calls into 2 `for_each_channel` loops
-
-Pair the 4 `compute_convolution` calls into 2 `for_each_channel` loops: derivatives 0+2 (sharing gradient angle data, applied to LF and HF sums) and derivatives 1+3 (sharing laplacian angle data, applied to LF and HF sums). Each loop computes 2 derivatives in one pass, halving loop overhead and improving register reuse for shared angle values. Outcome during previous experiment (with different test data): **SUCCESS**. Reduced baseline from 38.847s to 36.877s (~5.1% drop). Initial version had bug using isotropy_type[0] for both derivatives 0 and 2 (and [1] for both 1 and 3). Fixed to use correct per-derivative isotropy_type, with slight performance cost from additional branches.
