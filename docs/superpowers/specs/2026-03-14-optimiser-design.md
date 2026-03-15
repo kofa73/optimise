@@ -543,7 +543,7 @@ BENCHMARK
   evaluate result (see Section 6)
   success → SUCCESS_IDEA
   failure (performance) → FAIL_IDEA (outcome: "performance regression")
-  failure (early abort) → FAIL_IDEA (outcome: "benchmark early abort: obvious regression")
+  failure (early abort) → FAIL_IDEA (outcome: "benchmark early abort: <error details>")
   failure (parse error) → FAIL_IDEA (outcome: "benchmark error")
 
 SUCCESS_IDEA
@@ -564,7 +564,7 @@ FAIL_IDEA
   if benchmark ran (incl. early abort): append perf table to idea file
   commit script repo
   increment consecutive perf failure counter (only for "performance regression";
-    NOT for "build failure", "quality regression", "benchmark early abort: obvious regression", or "benchmark error")
+    NOT for "build failure", "quality regression", "benchmark early abort: ...", or "benchmark error")
   → CHECK_TERMINATION
 
 CHECK_TERMINATION (after CODE/TEST)

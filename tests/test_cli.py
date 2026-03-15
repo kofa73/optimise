@@ -268,7 +268,10 @@ class TestFailIdea:
         """Early abort rows (single run, no convergence) are still recorded."""
         s = _make_build_state(tmp_path)
         partial = [{"user": 15.0, "cpu": 150.0}]
-        _fail_idea(s, "benchmark early abort: obvious regression", bench_rows=partial)
+        _fail_idea(s, "benchmark early abort: Benchmark early abort: "
+                   "15.000s vs baseline 10.000s (-50.0%, need 5.0%)",
+                   bench_rows=partial)
         idea_content = (tmp_path / "script" / "ideas" / "done" / "idea.md").read_text()
         assert "# Individual timings" in idea_content
         assert "15.0" in idea_content
+        assert "15.000s vs baseline 10.000s" in idea_content

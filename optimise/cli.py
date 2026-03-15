@@ -477,7 +477,7 @@ def _do_build_test_benchmark(s, retries_left):
     except BenchmarkError as e:
         log.error(f"Benchmark error: {e}")
         if e.rows:
-            return _fail_idea(s, "benchmark early abort: obvious regression",
+            return _fail_idea(s, f"benchmark early abort: {e}",
                               bench_rows=e.rows)
         return _fail_idea(s, "benchmark error")
 
