@@ -1,0 +1,4 @@
+perf: Skip expensive HF variance calculation when regularization is zero via outer-loop unswitching
+
+The `variance[c]` regularization logic calculates the sum of 9 squared high-frequency neighbors (requiring 36 multiplications and 32 additions per pixel) unconditionally inside the innermost loop. However, when the `regularization` parameter is left at its baseline or set to zero (which is standard for several presets like bloom and inpaint highlights), `regularization_factor` evaluates to `0.f`. This means the expensive sum is simply multiplied by zero and discarded, leaving only the constant `variance_threshold`. By applying safe outer-loop unswitching based on `regularization_factor > 0.f` before the main row loop, we can entirely bypass these 68 redundant floating-point operations per pixel for this common configuration without breaking SIMD vectorization or altering bit-exact floating-point evaluation order.
+outcome: not applicable
