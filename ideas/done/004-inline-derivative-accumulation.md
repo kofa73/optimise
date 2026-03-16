@@ -1,3 +1,7 @@
 Inline derivative accumulation to eliminate intermediate array
 
 Currently, the multi-scale convolution step evaluates four diffusion orders by writing their results to a stack-allocated `derivatives[4]` array (comprising 16 floats). This array is immediately read back in a separate short loop to accumulate the final weighted update into the `acc` variable. By modifying the `compute_convolution_direct` inline function to accept the `ABCD[k]` weight and the `acc` accumulator directly as an `inout` parameter, we can multiply and accumulate the convolution results immediately as they are computed. This refactoring entirely eliminates the stack-allocated intermediate array and its standalone accumulation loop, directly reducing L1 memory traffic and register pressure while strictly preserving the identical mathematical floating-point evaluation order.
+
+outcome: not applicable
+
+The `compute_convolution_direct` function has already been renamed to `accumulate_convolution_direct` and updated to accept the `abcd` weight and `acc` accumulator as parameters. The intermediate `derivatives` array and its separate accumulation loop have been eliminated in the current codebase.
