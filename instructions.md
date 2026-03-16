@@ -5,4 +5,5 @@
 
 Optimise the performance of the target file(s). Focus on algorithmic
 improvements and reducing unnecessary computation.
-Don't bother with process_cl (that's the GPU path). Only code called from process() is important.
+You MUST NOT touch the OpenCL codepath (`process_cl` and other `..._cl` functions, or ANY code that is ONLY called from those, and not from `process`), as the QA checks and the benchmarks DO NOT verify those paths. If you do, YOU RISK INTRODUCING QUALITY AND PEROFMANCE REGRESSION. YOU MUST NOT DO THAT. DOING SO WILL LEAD TO LOSS OF TRUST, PENALTIES AND TERMINATION OF THE PROCESS. The ONLY reason you may change OpenCL-related ..._cl functions is if you make changes to **SHARED** code (tested by the CPU path), and the OpenCL code needs to be updated in a TRIVIAL way (parameter changes in a function, introduction of a new function with repeated code that can also be used from OpenCL).
+
