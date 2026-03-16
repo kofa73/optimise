@@ -1,0 +1,739 @@
+darktable build script
+
+Building directory:  /workspace/darktable/build
+Installation prefix: /home/developer/darktable-build
+Build type:          Release
+Build generator:     Unix Makefiles
+Build tasks:         12
+
+-- Found OpenMP_C: -fopenmp (found suitable version "4.5", minimum required is "4.5") 
+-- Found OpenMP_CXX: -fopenmp (found suitable version "4.5", minimum required is "4.5") 
+-- Found OpenMP: TRUE (found suitable version "4.5", minimum required is "4.5")  
+-- Building SSE2-optimized codepaths: ON
+-- Performing Test C_COMPILER_UNDERSTANDS_-Wno-error=varargs
+-- Performing Test C_COMPILER_UNDERSTANDS_-Wno-error=varargs - Success
+-- Performing Test CXX_COMPILER_UNDERSTANDS_-Wno-error=varargs
+-- Performing Test CXX_COMPILER_UNDERSTANDS_-Wno-error=varargs - Success
+-- Performing Test C_COMPILER_UNDERSTANDS_-Wno-error=address-of-packed-member
+-- Performing Test C_COMPILER_UNDERSTANDS_-Wno-error=address-of-packed-member - Success
+-- Performing Test CXX_COMPILER_UNDERSTANDS_-Wno-error=address-of-packed-member
+-- Performing Test CXX_COMPILER_UNDERSTANDS_-Wno-error=address-of-packed-member - Success
+-- Looking for external programs
+-- Found perl
+-- Found intltool-merge
+-- Found desktop-file-validate
+-- Found LibXml2: /usr/lib/x86_64-linux-gnu/libxml2.so (found version "2.9.13") 
+-- Found LLVM 15.0.7
+-- Found clang compiler - /usr/bin/clang-15
+-- Found clang opencl-c.h header in /usr/lib/llvm-15/lib/clang/15.0.7/include
+-- Will be able to test-compile OpenCL programs. Nice.
+-- Found jsonschema
+-- Found xsltproc
+-- Found xmllint
+-- All external programs found
+-- The following OPTIONAL packages have been found:
+
+ * FFI
+ * Terminfo
+ * LibXml2
+ * LLVM
+
+-- The following REQUIRED packages have been found:
+
+ * OpenMP (required version >= 4.5)
+ * Threads
+ * Gettext
+ * ZLIB
+
+-- Performing basic integral type checks
+-- Performing basic integral type checks - Success
+-- Looking for OpenMP
+-- Found OpenMP_C: -fopenmp (found version "4.5") 
+-- Found OpenMP_CXX: -fopenmp (found version "4.5") 
+-- Found OpenMP: TRUE (found version "4.5")  
+-- Looking for OpenMP - found (system)
+-- Looking for pugixml
+-- Found Pugixml 1.12
+-- Looking for pugixml - found (system)
+-- Looking for JPEG
+-- Looking for JPEG - found
+-- Looking for ZLIB
+-- Found ZLIB: /usr/lib/x86_64-linux-gnu/libz.so (found suitable version "1.2.11", minimum required is "1.2.11") 
+-- Looking for ZLIB - found (system)
+-- The following features have been enabled:
+
+ * OpenMP-based threading, used for parallelization of the library
+ * XML reading, used for loading of data/cameras.xml
+ * Lossy JPEG decoding, used for DNG Lossy JPEG compression decoding
+ * ZLIB decoding, used for DNG Deflate compression decoding
+
+-- The following OPTIONAL packages have been found:
+
+ * FFI
+ * Terminfo
+ * LibXml2
+ * LLVM
+ * XMLLINT, command line XML tool, <http://xmlsoft.org/>
+   Used for validation of data/cameras.xml
+
+-- The following RECOMMENDED packages have been found:
+
+ * JPEG, free library for handling the JPEG image data format, implements a JPEG codec
+   Used for decoding DNG Lossy JPEG compression
+
+-- The following REQUIRED packages have been found:
+
+ * Threads
+ * Gettext
+ * OpenMP, Open Multi-Processing, <https://www.openmp.org/>
+   Used for parallelization of the library
+ * Pugixml (required version >= 1.8), Light-weight, simple and fast XML parser, <http://pugixml.org/>
+   Used for loading of data/cameras.xml
+ * ZLIB (required version >= 1.2.11), software library used for data compression
+   Used for decoding DNG Deflate compression
+
+-- Found Glib 2.72.4
+-- Found LibXml2: /usr/lib/x86_64-linux-gnu/libxml2.so (found suitable version "2.9.13", minimum required is "2.6") 
+-- Could NOT find Imath (missing: Imath_DIR)
+-- Could NOT find JXL: Found unsuitable version "", but required is at least "0.7.0" (found JXL_LIBRARY-NOTFOUND)
+-- Could NOT find libheif (missing: libheif_DIR)
+-- Could NOT find libheif: Found unsuitable version "1.12.0", but required is at least "1.13.0" (found /usr/lib/x86_64-linux-gnu/libheif.so)
+-- Building LibRaw from intree copy
+-- Found GIO 
+-- Found ZLIB: /usr/lib/x86_64-linux-gnu/libz.so (found version "1.2.11") 
+-- Found JsonGlib 
+-- AI features: disabled
+-- Exiv2 >= 0.27.4 found with ISOBMFF support (CR3, AVIF, HEIF)
+-- The imported target "opj_server" references the file
+   "/usr/bin/opj_server"
+but this file does not exist.  Possible reasons include:
+* The file was deleted, renamed, or moved to another location.
+* An install or uninstall procedure did not complete successfully.
+* The installation package was faulty and contained
+   "/usr/lib/x86_64-linux-gnu/openjpeg-2.4/OpenJPEGTargets.cmake"
+but not all the files it references.
+
+-- Found GraphicsMagick 1.3.38
+-- Found GMIC 
+-- Found the following ICU libraries:
+--   i18n (required)
+--   data (required)
+--   uc (required)
+-- Does the compiler support __builtin_cpu_supports(): 1
+-- Lua support: Enabled
+-- Found Pugixml 1.12
+-- Map mode: enabled
+-- Print mode: enabled
+-- Signal debug: print-trace possible
+-- building darktable-cmstest with colord support. nice.
+-- LibRaw string version: 0.22.0
+-- LibRaw ID version:     0x0220
+-- LibRaw SO version:     24.0.0
+-- 
+-- ----------------------------------------------------------------------------------
+--  Libraw 0.22.0 configuration            <http://www.libraw.org>
+-- 
+--  Libraw will be compiled with OpenMP support .................. YES
+--  Libraw will be compiled with LCMS support .................... NO
+--  Libraw will be compiled with example command-line programs ... NO
+--  Libraw will be compiled with RedCine codec support ........... NO
+--  Libraw will be compiled with DNG deflate codec support ....... YES
+--  Libraw will be compiled with DNG lossy codec support ......... YES
+--  Libraw will be compiled with RawSpeed support ................ NO
+--  Libraw will be compiled with debug message from dcraw ........ NO
+--  Libraw will be compiled with Foveon X3F support .............. NO
+--  Libraw will be compiled with Raspberry Pi RAW support ........ NO
+--  Libraw will be compiled as a static library
+-- ----------------------------------------------------------------------------------
+-- 
+-- The following features have been enabled:
+
+ * OpenMP-based threading, used for parallelization of the library
+ * XML reading, used for loading of data/cameras.xml
+ * Lossy JPEG decoding, used for DNG Lossy JPEG compression decoding
+ * ZLIB decoding, used for DNG Deflate compression decoding
+
+-- The following OPTIONAL packages have been found:
+
+ * FFI
+ * Terminfo
+ * LLVM
+ * XMLLINT, command line XML tool, <http://xmlsoft.org/>
+   Used for validation of data/cameras.xml
+ * Gphoto2 (required version >= 2.5)
+ * OpenEXR
+ * WebP (required version >= 0.3.0)
+ * libavif
+ * PortMidi, Portable MIDI library, <https://github.com/PortMidi/portmidi>
+   Used for hardware MIDI input devices
+ * OpenJPEG
+ * IsoCodes (required version >= 3.66)
+ * Libsecret
+ * GraphicsMagick
+ * GMIC
+ * ICU
+ * Lua54 (required version >= 5.4)
+ * OSMGpsMap
+ * Colord
+ * ColordGTK
+ * Cups
+ * SDL2
+ * X11
+
+-- The following REQUIRED packages have been found:
+
+ * Threads
+ * Gettext
+ * GTK3 (required version >= 3.24.15)
+ * LibXml2 (required version >= 2.6)
+ * Potrace
+ * LensFun
+ * SQLite3 (required version >= 3.26)
+ * GIO
+ * GThread
+ * GModule
+ * PangoCairo
+ * Rsvg2
+ * PNG
+ * TIFF
+ * LCMS2
+ * JsonGlib
+ * CURL (required version >= 7.56)
+ * Exiv2 (required version >= 0.27.2)
+ * Pugixml (required version >= 1.5), Light-weight, simple and fast XML parser, <http://pugixml.org/>
+   Used for loading of data/cameras.xml
+ * Glib
+ * ZLIB, software library used for data compression
+   Used for decoding DNG Deflate compression
+ * JPEG, free library for handling the JPEG image data format, implements a JPEG codec
+   Used for decoding DNG Lossy JPEG compression
+ * OpenMP, Open Multi-Processing, <https://www.openmp.org/>
+   Used for parallelization of the library
+
+-- The following OPTIONAL packages have not been found:
+
+ * Imath (required version >= 3.1)
+ * JXL (required version >= 0.7.0)
+ * libheif (required version >= 1.13.0)
+
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /workspace/darktable/build
+[  0%] Updating version string (git checkout)
+[  0%] Built target locale_ca
+[  1%] Built target locale_zh_TW
+[  1%] Built target locale_eo
+[  1%] Built target locale_en-truecase
+[  1%] Built target locale_da
+[  2%] Built target locale_cs
+[  2%] Built target locale_af
+[  2%] Built target locale_de
+[  2%] Built target locale_el
+[  2%] Built target locale_fi
+[  2%] Built target locale_es
+[  2%] Built target locale_fr
+[  2%] Built target locale_gl
+[  2%] Built target locale_it
+[  2%] Built target locale_nl
+[  2%] Built target locale_he
+[  3%] Built target locale_hu
+[  3%] Built target locale_ja
+[  3%] Built target locale_ko_KR
+[  3%] Built target locale_pt_BR
+[  3%] Built target locale_pl
+[  3%] Built target locale_nb
+[  3%] Built target locale_pt_PT
+[  4%] Built target locale_ru
+[  4%] Built target locale_ro
+[  4%] Built target locale_sk
+[  4%] Built target locale_th
+[  4%] Built target locale_sl
+[  4%] Built target locale_sq
+[  4%] Built target locale_sr
+[  4%] Built target locale_sr-latin
+[  4%] Built target locale_sv
+[  4%] Built target locale_tr
+[  4%] Built target locale_uk
+[  4%] Built target locale_zh_CN
+[  4%] Checking validity of /workspace/darktable/build/share/darktable/darktableconfig.xml
+[  4%] Built target rawspeed_codes
+[  4%] Built target generate_styles_string
+[  5%] Built target generate_conf
+[  5%] Built target validate-cameras.xml
+[  5%] Built target rawspeed_adt
+Consolidate compiler generated dependencies of target rawspeed_common
+Consolidate compiler generated dependencies of target rawspeed_metadata
+Consolidate compiler generated dependencies of target rawspeed_io
+Version string: 5.3.0+1657~gf33abac414-dirty
+Consolidate compiler generated dependencies of target rawspeed_interpolators
+[  5%] Built target validate_darktableconfig_xml
+Consolidate compiler generated dependencies of target rawspeed_tiff
+[  5%] Built target rawspeed_metadata
+[  5%] Built target create_version_gen
+[  6%] Built target rawspeed_common
+[  6%] Built target generate_authors_h
+Consolidate compiler generated dependencies of target rawspeed_parsers
+[  6%] Built target rawspeed_interpolators
+[  7%] Built target rawspeed_io
+Consolidate compiler generated dependencies of target whereami
+[  7%] Built target rawspeed_tiff
+Consolidate compiler generated dependencies of target lautoc
+Consolidate compiler generated dependencies of target rawspeed_decoders
+Consolidate compiler generated dependencies of target xcf
+[  8%] Built target rawspeed_parsers
+[  8%] Built target whereami
+[  9%] Built target lautoc
+[  9%] Built target dependencies
+[  9%] Built target check-rawspeed
+[  9%] Built target tests
+[  9%] Built target xcf
+[ 11%] Checking validity of org.darktable.darktable.desktop
+[ 11%] Built target rawspeed_decoders
+Consolidate compiler generated dependencies of target rawspeed_decompressors
+[ 11%] Checking validity of wb_presets.json
+[ 11%] Built target darktable.appdata_file
+[ 11%] Built target deploy
+[ 11%] Checking validity of noiseprofiles.json
+[ 11%] Built target darktablerc_file
+[ 11%] Built target validate_darktable_desktop
+[ 11%] Built target opencl-program-soften.cl
+[ 11%] Built target opencl-program-agx.cl
+[ 11%] Built target opencl-program-atrous.cl
+[ 14%] Built target rawspeed_decompressors
+[ 14%] Built target opencl-program-basecurve.cl
+[ 14%] Built target opencl-program-basic.cl
+[ 14%] Built target opencl-program-basicadj.cl
+[ 15%] Built target opencl-program-bilateral.cl
+[ 15%] Built target opencl-program-bloom.cl
+[ 15%] Built target opencl-program-blendop.cl
+Consolidate compiler generated dependencies of target raw
+[ 15%] Built target opencl-program-blurs.cl
+[ 15%] Built target opencl-program-bspline.cl
+[ 15%] Built target opencl-program-channelmixer.cl
+[ 15%] Built target opencl-program-capture.cl
+[ 15%] Built target opencl-program-colorequal.cl
+[ 15%] Built target opencl-program-colorreconstruction.cl
+[ 15%] Built target opencl-program-colorspaces.cl
+[ 16%] Built target opencl-program-demosaic_markesteijn.cl
+[ 16%] Built target opencl-program-demosaic_other.cl
+[ 16%] Built target opencl-program-demosaic_ppg.cl
+[ 16%] Built target opencl-program-demosaic_rcd.cl
+[ 16%] Built target opencl-program-demosaic_vng.cl
+[ 16%] Built target opencl-program-denoiseprofile.cl
+[ 16%] Built target opencl-program-diffuse.cl
+[ 16%] Built target opencl-program-dwt.cl
+[ 16%] Built target opencl-program-extended.cl
+[ 23%] Built target raw
+[ 23%] Built target opencl-program-filmic.cl
+Consolidate compiler generated dependencies of target raw_r
+[ 23%] Built target opencl-program-gaussian.cl
+[ 24%] Built target opencl-program-guided_filter.cl
+[ 24%] Built target opencl-program-hazeremoval.cl
+[ 24%] Built target opencl-program-highpass.cl
+[ 24%] Built target opencl-program-liquify.cl
+[ 24%] Built target opencl-program-locallaplacian.cl
+[ 24%] Built target opencl-program-lut3d.cl
+[ 24%] Built target opencl-program-negadoctor.cl
+[ 24%] Built target opencl-program-nlmeans.cl
+[ 24%] Built target opencl-program-retouch.cl
+[ 24%] Built target opencl-program-rgbcurve.cl
+[ 25%] Built target opencl-program-rgblevels.cl
+[ 25%] Built target opencl-program-sharpen.cl
+[ 25%] Built target opencl-program-sigmoid.cl
+[ 25%] Built target manpage-es-darktable-cmstest.1
+[ 25%] Built target manpage-es-darktable.1
+[ 25%] Built target manpage-es-darktable-cli.1
+[ 33%] Built target raw_r
+[ 34%] Built target manpage-es-darktable-generate-cache.1
+[ 34%] Built target manpage-es-darktable-cltest.1
+[ 35%] Built target manpage_darktable-cli.1
+[ 35%] Built target manpage_darktable.1
+[ 35%] Built target manpage_darktable-generate-cache.1
+[ 35%] Built target manpage_darktable-cltest.1
+[ 35%] Built target manpage_darktable-cmstest.1
+[ 35%] Built target manpage-de-darktable-cmstest.1
+[ 36%] Built target manpage-de-darktable.1
+[ 36%] Built target manpage-de-darktable-cli.1
+[ 36%] Built target manpage-de-darktable-generate-cache.1
+[ 36%] Built target manpage-de-darktable-cltest.1
+[ 36%] Built target manpage-fr-darktable-cmstest.1
+[ 36%] Built target manpage-fr-darktable.1
+[ 36%] Built target manpage-fr-darktable-cli.1
+[ 36%] Built target manpage-fr-darktable-generate-cache.1
+[ 37%] Built target generate_version
+[ 37%] Built target manpage-fr-darktable-cltest.1
+[ 37%] Built target locales
+[ 37%] Built target generate_preferences
+[ 37%] Built target rawspeed
+[ 37%] Built target darktable.desktop_file
+[ 37%] Built target testcompile_opencl_kernels
+Consolidate compiler generated dependencies of target darktable-cmstest
+[ 37%] Built target manpage-de
+[ 37%] Built target manpage-es
+[ 37%] Built target manpage-fr
+Consolidate compiler generated dependencies of target rawspeed_get_number_of_processor_cores
+[ 37%] Built target darktable-cmstest
+Consolidate compiler generated dependencies of target lib_darktable_imageio_rawspeed
+[ 37%] Built target rawspeed_get_number_of_processor_cores
+[ 37%] Built target manpages
+Consolidate compiler generated dependencies of target darktable-rs-identify
+[ 37%] Built target lib_darktable_imageio_rawspeed
+[ 38%] Built target darktable-rs-identify
+[ 38%] Built target validate_noiseprofiles_json
+[ 38%] Built target validate_wbpresets_json
+Consolidate compiler generated dependencies of target lib_darktable
+[ 58%] Built target lib_darktable
+Consolidate compiler generated dependencies of target slideshow
+Consolidate compiler generated dependencies of target lighttable
+Consolidate compiler generated dependencies of target darktable
+Consolidate compiler generated dependencies of target darkroom
+Consolidate compiler generated dependencies of target print
+Consolidate compiler generated dependencies of target tethering
+Consolidate compiler generated dependencies of target import
+Consolidate compiler generated dependencies of target map
+Consolidate compiler generated dependencies of target styles
+Consolidate compiler generated dependencies of target image
+Consolidate compiler generated dependencies of target copy_history
+Consolidate compiler generated dependencies of target export
+[ 59%] Built target slideshow
+[ 59%] Built target lighttable
+[ 59%] Built target darktable
+[ 59%] Built target print
+[ 59%] Built target tethering
+[ 60%] Built target darkroom
+[ 60%] Built target map
+[ 60%] Built target import
+[ 60%] Built target copy_history
+[ 60%] Built target styles
+[ 60%] Built target image
+[ 60%] Built target export
+Consolidate compiler generated dependencies of target tagging
+Consolidate compiler generated dependencies of target select
+Consolidate compiler generated dependencies of target collect
+Consolidate compiler generated dependencies of target history
+Consolidate compiler generated dependencies of target metadata
+Consolidate compiler generated dependencies of target metadata_view
+Consolidate compiler generated dependencies of target filtering
+Consolidate compiler generated dependencies of target navigation
+Consolidate compiler generated dependencies of target recentcollect
+Consolidate compiler generated dependencies of target snapshots
+Consolidate compiler generated dependencies of target modulegroups
+[ 60%] Built target tagging
+[ 61%] Built target history
+[ 61%] Built target select
+[ 61%] Built target collect
+Consolidate compiler generated dependencies of target histogram
+[ 61%] Built target metadata
+[ 61%] Built target metadata_view
+[ 61%] Built target navigation
+[ 62%] Built target filtering
+[ 63%] Built target recentcollect
+[ 63%] Built target snapshots
+Consolidate compiler generated dependencies of target backgroundjobs
+[ 63%] Built target modulegroups
+Consolidate compiler generated dependencies of target colorpicker
+Consolidate compiler generated dependencies of target masks
+Consolidate compiler generated dependencies of target session
+Consolidate compiler generated dependencies of target ratings
+Consolidate compiler generated dependencies of target duplicate
+Consolidate compiler generated dependencies of target ioporder
+Consolidate compiler generated dependencies of target viewswitcher
+Consolidate compiler generated dependencies of target darktable_label
+Consolidate compiler generated dependencies of target colorlabels
+[ 63%] Built target backgroundjobs
+[ 63%] Built target histogram
+Consolidate compiler generated dependencies of target filter
+[ 63%] Built target colorpicker
+[ 63%] Built target masks
+[ 63%] Built target duplicate
+[ 63%] Built target session
+[ 63%] Built target ratings
+[ 63%] Built target ioporder
+[ 63%] Built target viewswitcher
+[ 63%] Built target colorlabels
+Consolidate compiler generated dependencies of target view_toolbox
+Consolidate compiler generated dependencies of target lighttable_mode
+[ 63%] Built target filter
+[ 63%] Built target darktable_label
+Consolidate compiler generated dependencies of target module_toolbox
+Consolidate compiler generated dependencies of target hinter
+Consolidate compiler generated dependencies of target filmstrip
+Consolidate compiler generated dependencies of target global_toolbox
+Consolidate compiler generated dependencies of target timeline
+Consolidate compiler generated dependencies of target camera
+Consolidate compiler generated dependencies of target image_infos
+Consolidate compiler generated dependencies of target midi
+Consolidate compiler generated dependencies of target gamepad
+Consolidate compiler generated dependencies of target live_view
+[ 63%] Built target view_toolbox
+[ 63%] Built target lighttable_mode
+[ 63%] Built target hinter
+[ 63%] Built target module_toolbox
+[ 63%] Built target filmstrip
+[ 63%] Built target camera
+[ 63%] Built target global_toolbox
+[ 64%] Built target midi
+[ 64%] Built target timeline
+[ 64%] Built target image_infos
+Consolidate compiler generated dependencies of target location
+[ 64%] Built target live_view
+Consolidate compiler generated dependencies of target map_settings
+[ 65%] Built target gamepad
+Consolidate compiler generated dependencies of target map_locations
+Consolidate compiler generated dependencies of target geotagging
+Consolidate compiler generated dependencies of target print_settings
+Consolidate compiler generated dependencies of target bloom
+Consolidate compiler generated dependencies of target rawprepare
+Consolidate compiler generated dependencies of target soften
+Consolidate compiler generated dependencies of target highpass
+Consolidate compiler generated dependencies of target lowpass
+Consolidate compiler generated dependencies of target shadhi
+Consolidate compiler generated dependencies of target colorreconstruct
+[ 66%] Built target location
+[ 66%] Built target map_settings
+[ 66%] Built target map_locations
+[ 66%] Built target print_settings
+[ 66%] Built target bloom
+[ 67%] Built target geotagging
+[ 68%] Built target soften
+[ 68%] Built target rawprepare
+[ 69%] Built target highpass
+[ 69%] Built target lowpass
+[ 69%] Built target shadhi
+Consolidate compiler generated dependencies of target colisa
+Consolidate compiler generated dependencies of target tonecurve
+[ 69%] Built target colorreconstruct
+Consolidate compiler generated dependencies of target tonemap
+Consolidate compiler generated dependencies of target colorcorrection
+Consolidate compiler generated dependencies of target gamma
+Consolidate compiler generated dependencies of target temperature
+Consolidate compiler generated dependencies of target exposure
+Consolidate compiler generated dependencies of target basicadj
+Consolidate compiler generated dependencies of target equalizer
+[ 69%] Built target colisa
+Consolidate compiler generated dependencies of target rgbcurve
+Consolidate compiler generated dependencies of target colorbalance
+Consolidate compiler generated dependencies of target colorin
+[ 69%] Built target colorcorrection
+[ 70%] Built target tonecurve
+[ 70%] Built target tonemap
+[ 70%] Built target gamma
+[ 71%] Built target temperature
+[ 71%] Built target exposure
+[ 71%] Built target basicadj
+Consolidate compiler generated dependencies of target colorout
+[ 72%] Built target equalizer
+[ 72%] Built target colorin
+[ 72%] Built target rgbcurve
+[ 73%] Built target colorbalance
+Consolidate compiler generated dependencies of target colorchecker
+Consolidate compiler generated dependencies of target clipping
+Consolidate compiler generated dependencies of target enlargecanvas
+Consolidate compiler generated dependencies of target crop
+Consolidate compiler generated dependencies of target sharpen
+[ 74%] Built target colorout
+Consolidate compiler generated dependencies of target dither
+Consolidate compiler generated dependencies of target monochrome
+Consolidate compiler generated dependencies of target colorzones
+Consolidate compiler generated dependencies of target basecurve
+Consolidate compiler generated dependencies of target highlights
+Consolidate compiler generated dependencies of target overlay
+[ 74%] Built target colorchecker
+[ 74%] Built target clipping
+[ 74%] Built target enlargecanvas
+[ 74%] Built target crop
+[ 75%] Built target sharpen
+[ 75%] Built target monochrome
+Consolidate compiler generated dependencies of target rawoverexposed
+[ 76%] Built target colorzones
+[ 76%] Built target dither
+[ 76%] Built target basecurve
+[ 76%] Built target highlights
+[ 76%] Built target overlay
+Consolidate compiler generated dependencies of target velvia
+Consolidate compiler generated dependencies of target splittoning
+Consolidate compiler generated dependencies of target vignette
+Consolidate compiler generated dependencies of target grain
+Consolidate compiler generated dependencies of target bilateral
+Consolidate compiler generated dependencies of target clahe
+Consolidate compiler generated dependencies of target profile_gamma
+[ 77%] Built target rawoverexposed
+Consolidate compiler generated dependencies of target colortransfer
+Consolidate compiler generated dependencies of target colormapping
+Consolidate compiler generated dependencies of target channelmixer
+Consolidate compiler generated dependencies of target graduatednd
+[ 77%] Built target velvia
+[ 78%] Built target grain
+[ 78%] Built target bilateral
+[ 78%] Built target vignette
+[ 78%] Built target splittoning
+[ 79%] Built target clahe
+[ 79%] Built target profile_gamma
+[ 79%] Built target colormapping
+Consolidate compiler generated dependencies of target relight
+[ 79%] Built target colortransfer
+[ 79%] Built target channelmixer
+[ 79%] Built target graduatednd
+Consolidate compiler generated dependencies of target scalepixels
+Consolidate compiler generated dependencies of target zonesystem
+Consolidate compiler generated dependencies of target rotatepixels
+Consolidate compiler generated dependencies of target atrous
+Consolidate compiler generated dependencies of target cacorrect
+Consolidate compiler generated dependencies of target demosaic
+Consolidate compiler generated dependencies of target overexposed
+Consolidate compiler generated dependencies of target hotpixels
+Consolidate compiler generated dependencies of target lowlight
+Consolidate compiler generated dependencies of target spots
+[ 79%] Built target relight
+[ 80%] Built target scalepixels
+Consolidate compiler generated dependencies of target retouch
+[ 81%] Built target zonesystem
+[ 81%] Built target atrous
+[ 81%] Built target rotatepixels
+[ 81%] Built target cacorrect
+[ 81%] Built target hotpixels
+[ 82%] Built target demosaic
+[ 82%] Built target overexposed
+[ 82%] Built target spots
+[ 82%] Built target lowlight
+Consolidate compiler generated dependencies of target liquify
+Consolidate compiler generated dependencies of target rawdenoise
+[ 82%] Built target retouch
+Consolidate compiler generated dependencies of target borders
+Consolidate compiler generated dependencies of target colorize
+Consolidate compiler generated dependencies of target nlmeans
+Consolidate compiler generated dependencies of target colorcontrast
+Consolidate compiler generated dependencies of target levels
+Consolidate compiler generated dependencies of target rgblevels
+Consolidate compiler generated dependencies of target invert
+Consolidate compiler generated dependencies of target vibrance
+Consolidate compiler generated dependencies of target flip
+[ 82%] Built target rawdenoise
+[ 82%] Built target liquify
+Consolidate compiler generated dependencies of target finalscale
+[ 82%] Built target nlmeans
+[ 83%] Built target colorize
+[ 84%] Built target borders
+[ 85%] Built target colorcontrast
+Consolidate compiler generated dependencies of target globaltonemap
+[ 86%] Built target rgblevels
+[ 86%] Built target levels
+[ 87%] Built target invert
+[ 87%] Built target flip
+[ 88%] Built target vibrance
+Consolidate compiler generated dependencies of target bilat
+Consolidate compiler generated dependencies of target denoiseprofile
+[ 88%] Built target finalscale
+Consolidate compiler generated dependencies of target defringe
+Consolidate compiler generated dependencies of target ashift
+Consolidate compiler generated dependencies of target hazeremoval
+Consolidate compiler generated dependencies of target filmic
+[ 88%] Built target globaltonemap
+Consolidate compiler generated dependencies of target mask_manager
+Consolidate compiler generated dependencies of target toneequal
+[ 89%] Built target bilat
+Consolidate compiler generated dependencies of target filmicrgb
+Consolidate compiler generated dependencies of target lut3d
+Consolidate compiler generated dependencies of target negadoctor
+[ 89%] Built target denoiseprofile
+[ 89%] Built target defringe
+[ 90%] Built target filmic
+[ 90%] Built target ashift
+[ 90%] Built target hazeremoval
+[ 90%] Built target toneequal
+[ 90%] Built target mask_manager
+Consolidate compiler generated dependencies of target censorize
+Consolidate compiler generated dependencies of target channelmixerrgb
+[ 91%] Built target negadoctor
+[ 91%] Built target filmicrgb
+[ 92%] Built target lut3d
+Consolidate compiler generated dependencies of target colorbalancergb
+Consolidate compiler generated dependencies of target cacorrectrgb
+Consolidate compiler generated dependencies of target sigmoid
+Consolidate compiler generated dependencies of target blurs
+Consolidate compiler generated dependencies of target diffuse
+Consolidate compiler generated dependencies of target primaries
+Consolidate compiler generated dependencies of target colorequal
+Consolidate compiler generated dependencies of target agx
+[ 93%] Built target censorize
+Consolidate compiler generated dependencies of target rasterfile
+[ 93%] Built target channelmixerrgb
+Consolidate compiler generated dependencies of target watermark
+[ 93%] Built target colorbalancergb
+[ 93%] Built target cacorrectrgb
+[ 93%] Built target sigmoid
+[ 94%] Built target colorequal
+[ 94%] Built target primaries
+[ 94%] Built target blurs
+[ 94%] Building C object lib/darktable/plugins/CMakeFiles/diffuse.dir/introspection_diffuse.c.o
+[ 94%] Built target agx
+Consolidate compiler generated dependencies of target lens
+Consolidate compiler generated dependencies of target copy
+[ 95%] Built target rasterfile
+[ 96%] Built target watermark
+Consolidate compiler generated dependencies of target png
+Consolidate compiler generated dependencies of target ppm
+Consolidate compiler generated dependencies of target jpeg
+Consolidate compiler generated dependencies of target pdf
+Consolidate compiler generated dependencies of target pfm
+Consolidate compiler generated dependencies of target tiff
+Consolidate compiler generated dependencies of target webp
+Consolidate compiler generated dependencies of target exr
+[ 96%] Built target copy
+[ 96%] Built target lens
+Consolidate compiler generated dependencies of target j2k
+[ 96%] Built target png
+[ 96%] Built target ppm
+[ 96%] Built target pfm
+[ 96%] Built target jpeg
+[ 97%] Built target pdf
+[ 97%] Built target tiff
+[ 97%] Built target webp
+[ 97%] Built target j2k
+Consolidate compiler generated dependencies of target avif_format
+Consolidate compiler generated dependencies of target gimp_xcf
+Consolidate compiler generated dependencies of target disk
+Consolidate compiler generated dependencies of target email
+Consolidate compiler generated dependencies of target gallery
+[ 97%] Built target exr
+Consolidate compiler generated dependencies of target latex
+Consolidate compiler generated dependencies of target piwigo
+Consolidate compiler generated dependencies of target darktable-cltest
+Consolidate compiler generated dependencies of target darktable-cli
+Consolidate compiler generated dependencies of target darktable-generate-cache
+[ 98%] Built target avif_format
+[ 98%] Built target gimp_xcf
+[ 99%] Built target disk
+[ 99%] Built target gallery
+[ 99%] Built target email
+[ 99%] Built target latex
+[ 99%] Built target piwigo
+[ 99%] Built target darktable-cltest
+[ 99%] Built target darktable-cli
+[ 99%] Built target darktable-generate-cache
+Consolidate compiler generated dependencies of target darktable-chart
+[100%] Built target darktable-chart
+CMake Warning at src/CMakeLists.txt:350 (find_package):
+  Could not find a configuration file for package "OpenEXR" that is
+  compatible with requested version "3.0".
+
+  The following configuration files were considered but not accepted:
+
+    /usr/lib/x86_64-linux-gnu/cmake/OpenEXR/OpenEXRConfig.cmake, version: 2.5.7
+    /lib/x86_64-linux-gnu/cmake/OpenEXR/OpenEXRConfig.cmake, version: 2.5.7
+
+
+
+-- Checking for -march=native support
+In file included from /workspace/darktable/build/lib/darktable/plugins/introspection_diffuse.c:102:
+In function ‘accumulate_convolution_direct’,
+    inlined from ‘accumulate_convolution_direct’ at /workspace/darktable/src/iop/diffuse.c:945:20,
+    inlined from ‘heat_PDE_diffusion._omp_fn.0’ at /workspace/darktable/src/iop/diffuse.c:1219:5:
+/workspace/darktable/src/iop/diffuse.c:974:37: error: ‘cos_theta_grad_sq’ may be used uninitialized [-Werror=maybe-uninitialized]
+  974 |         const float a11 = cos_theta2[c] + c2[c] * sin_theta2[c];
+      |                           ~~~~~~~~~~^~~
+compilation terminated due to -Wfatal-errors.
+cc1: all warnings being treated as errors
+gmake[2]: *** [lib/darktable/plugins/CMakeFiles/diffuse.dir/build.make:82: lib/darktable/plugins/CMakeFiles/diffuse.dir/introspection_diffuse.c.o] Error 1
+gmake[1]: *** [CMakeFiles/Makefile2:6826: lib/darktable/plugins/CMakeFiles/diffuse.dir/all] Error 2
+gmake: *** [Makefile:156: all] Error 2
