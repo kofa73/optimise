@@ -291,12 +291,13 @@ def do_run(directory):
                 continue
 
             # Check if LLM says idea is not applicable
-            if parse_not_applicable(output):
+            is_na, explanation = parse_not_applicable(output)
+            if is_na:
                 log.info(f"[CODE] Idea not applicable: {idea_title[:60]}")
                 state_obj = _BuildState(directory, target_repo_path, target_git,
                                        script_git, settings, idea_file, iteration,
                                        consecutive_perf_failures, start_time)
-                _fail_idea(state_obj, "not applicable")
+                _fail_idea(state_obj, "not applicable", explanation=explanation)
                 state = StartupState.GENERATE
                 continue
 
@@ -497,7 +498,7 @@ def _succeed_idea(s, best, improvement_pct, detail, baseline_sum):
     return {"consecutive_perf_failures": 0}
 
 
-def _fail_idea(s, outcome, bench_rows=None):
+def _fail_idea(s, outcome, bench_rows=None, explanation=None):
     """Handle a failed idea."""
     # Determine which directory the idea is currently in
     for subdir in ("testing", "coding"):
@@ -507,7 +508,8 @@ def _fail_idea(s, outcome, bench_rows=None):
             break
 
     perf_table = format_perf_log(bench_rows) if bench_rows else None
-    append_outcome(s.script_repo, s.idea_file, outcome, perf_table=perf_table)
+    append_outcome(s.script_repo, s.idea_file, outcome, perf_table=perf_table,
+                   explanation=explanation)
     s.target_git.rollback()
     clean_errors(s.script_repo)
 

@@ -338,3 +338,32 @@ Replace the for loop with explicit scalar operations.
         assert ideas == []
 
 
+from optimise.runner import parse_not_applicable
+
+
+class TestParseNotApplicable:
+    def test_parse_not_applicable_positive_with_explanation(self):
+        text = "NOT_APPLICABLE\nThis code has already been optimised in a previous step."
+        is_na, explanation = parse_not_applicable(text)
+        assert is_na is True
+        assert explanation == "This code has already been optimised in a previous step."
+
+    def test_parse_not_applicable_positive_no_explanation(self):
+        text = "NOT_APPLICABLE"
+        is_na, explanation = parse_not_applicable(text)
+        assert is_na is True
+        assert explanation == ""
+
+    def test_parse_not_applicable_negative(self):
+        text = "I have implemented the changes."
+        is_na, explanation = parse_not_applicable(text)
+        assert is_na is False
+        assert explanation == ""
+
+    def test_parse_not_applicable_whitespace(self):
+        text = "\n  NOT_APPLICABLE  \n\n  The algorithm changed significantly.  \n"
+        is_na, explanation = parse_not_applicable(text)
+        assert is_na is True
+        assert explanation == "The algorithm changed significantly."
+
+

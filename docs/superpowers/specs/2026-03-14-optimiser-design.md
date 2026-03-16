@@ -243,7 +243,8 @@ On failure (no benchmark ran):
 ```
 outcome: build failure
 ```
-or `outcome: quality regression`.
+or `outcome: quality regression` or `outcome: not applicable`.
+In the `not applicable` case, the AI's explanation is appended after the outcome.
 
 On failure (benchmark ran — QA passed but performance check failed):
 ```
@@ -494,7 +495,7 @@ CODE
   script builds prompt: instructions + learnings + idea content
   if errors.txt exists: append to prompt with fix instructions
   LLM gets Read + Edit tools for target repo
-  if LLM responds NOT_APPLICABLE → FAIL_IDEA (outcome: "not applicable")
+  if LLM responds NOT_APPLICABLE → FAIL_IDEA (outcome: "not applicable", includes explanation)
   → BUILD
 
 BUILD

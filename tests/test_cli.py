@@ -255,12 +255,28 @@ class TestNotApplicable:
 
     def test_parse_not_applicable_positive(self):
         from optimise.runner import parse_not_applicable
-        assert parse_not_applicable("NOT_APPLICABLE\nCode already changed.") is True
-        assert parse_not_applicable("NOT_APPLICABLE") is True
-        assert parse_not_applicable("  NOT_APPLICABLE  \nreason") is True
+        ok, exp = parse_not_applicable("NOT_APPLICABLE\nCode already changed.")
+        assert ok is True
+        assert exp == "Code already changed."
+
+        ok, exp = parse_not_applicable("NOT_APPLICABLE")
+        assert ok is True
+        assert exp == ""
+
+        ok, exp = parse_not_applicable("  NOT_APPLICABLE  \nreason")
+        assert ok is True
+        assert exp == "reason"
 
     def test_parse_not_applicable_negative(self):
         from optimise.runner import parse_not_applicable
-        assert parse_not_applicable("I have made the edits.") is False
-        assert parse_not_applicable("") is False
-        assert parse_not_applicable("NOT_APPLICABLE is not the right answer") is False
+        ok, exp = parse_not_applicable("I have made the edits.")
+        assert ok is False
+        assert exp == ""
+
+        ok, exp = parse_not_applicable("")
+        assert ok is False
+        assert exp == ""
+
+        ok, exp = parse_not_applicable("NOT_APPLICABLE is not the right answer")
+        assert ok is False
+        assert exp == ""

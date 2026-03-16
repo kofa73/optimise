@@ -165,6 +165,16 @@ class TestAppendOutcome:
         assert "# Individual timings" in content
         assert "| 1.000 |" in content
 
+    def test_appends_explanation(self, tmp_path):
+        done = tmp_path / "ideas" / "done"
+        done.mkdir(parents=True)
+        (done / "idea.md").write_text("Title\n\nBody")
+        append_outcome(str(tmp_path), "idea.md", "not applicable",
+                       explanation="The code already uses a similar optimisation.")
+        content = (done / "idea.md").read_text()
+        assert "outcome: not applicable" in content
+        assert "\nThe code already uses a similar optimisation.\n" in content
+
 
 class TestAllIdeaTitles:
     def test_collects_from_all_dirs(self, tmp_path):

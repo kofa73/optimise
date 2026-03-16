@@ -211,12 +211,18 @@ def parse_generated_ideas(text):
 def parse_not_applicable(text):
     """Check if the LLM response indicates the idea is not applicable.
 
-    Returns True if the first non-empty line is exactly NOT_APPLICABLE.
+    Returns (is_not_applicable: bool, explanation: str).
+    The explanation is the rest of the text after NOT_APPLICABLE.
     """
-    for line in text.split("\n"):
-        line = line.strip()
-        if line:
-            return line == "NOT_APPLICABLE"
-    return False
+    lines = text.strip().split("\n")
+    if not lines:
+        return False, ""
+
+    first_line = lines[0].strip()
+    if first_line == "NOT_APPLICABLE":
+        explanation = "\n".join(lines[1:]).strip()
+        return True, explanation
+
+    return False, ""
 
 
