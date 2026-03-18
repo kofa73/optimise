@@ -196,7 +196,7 @@ def do_run(directory):
                     num_warmup=settings["num_warmup_iterations"],
                     convergence_threshold_pct=settings["benchmark_convergence_threshold_pct"],
                     convergence_tail_runs=settings["benchmark_convergence_tail_runs"],
-                    min_improvement_pct=settings["min_improvement_pct"],
+                    early_abort_pct=settings["early_abort_pct"],
                 )
             except BenchmarkError as e:
                 log.error(f"Baseline benchmark failed: {e}")
@@ -435,7 +435,7 @@ def _do_build_test_benchmark(s, retries_left):
             num_warmup=s.settings["num_warmup_iterations"],
             convergence_threshold_pct=s.settings["benchmark_convergence_threshold_pct"],
             convergence_tail_runs=s.settings["benchmark_convergence_tail_runs"],
-            min_improvement_pct=s.settings["min_improvement_pct"],
+            early_abort_pct=s.settings["early_abort_pct"],
         )
     except BenchmarkError as e:
         log.error(f"Benchmark error: {e}")
@@ -455,7 +455,7 @@ def _do_build_test_benchmark(s, retries_left):
         return _succeed_idea(s, best, improvement_pct, detail, baseline_sum)
     else:
         log.info(f"FAILED: {detail}")
-        return _fail_idea(s, "performance regression", bench_rows=best)
+        return _fail_idea(s, "target not reached", bench_rows=best)
 
 
 def _succeed_idea(s, best, improvement_pct, detail, baseline_sum):
@@ -517,7 +517,7 @@ def _fail_idea(s, outcome, bench_rows=None, explanation=None):
     s.script_git.commit_all(f"idea failed ({outcome}): {idea_title[:60]}")
 
     cpf = s.consecutive_perf_failures
-    if outcome == "performance regression":
+    if outcome == "target not reached":
         cpf += 1
 
     return {"consecutive_perf_failures": cpf}

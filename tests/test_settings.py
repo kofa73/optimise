@@ -66,7 +66,7 @@ class TestValidateSettings:
             "quality_cmd": "",
             "min_improvement_pct": "0.5",
             "individual_regression_tradeoff": "2",
-            "early_abort_regression_pct": "10",
+            "early_abort_pct": "10",
             "num_warmup_iterations": "0",
             "benchmark_convergence_threshold_pct": "0.1",
             "benchmark_convergence_tail_runs": "5",
@@ -159,3 +159,15 @@ class TestValidateSettings:
         settings["instructions"] = "nonexistent.md"
         with pytest.raises(SettingsError, match="instructions"):
             validate_settings(settings, script_repo=str(tmp_path))
+
+    def test_early_abort_pct_parsed_as_float(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["early_abort_pct"] = "3.5"
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["early_abort_pct"] == 3.5
+
+    def test_early_abort_pct_defaults_to_min_improvement_pct(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        del settings["early_abort_pct"]
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["early_abort_pct"] == result["min_improvement_pct"]

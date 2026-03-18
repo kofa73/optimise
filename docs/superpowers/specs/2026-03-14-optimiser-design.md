@@ -134,6 +134,11 @@ bench_cmd: <command to run performance benchmark>
 # Changes below this are treated as noise and reverted.
 min_improvement_pct: 0.5
 
+# Minimum improvement on the FIRST benchmark iteration to continue benchmarking (percent).
+# If the first run doesn't beat this, the benchmark is aborted early to save time.
+# Defaults to min_improvement_pct if not set. Typically set lower.
+early_abort_pct: 0.5
+
 # If any individual row regresses, sum improvement must also be at least
 # this multiplier times the worst individual row regression percent.
 # 0 = ignore individual regressions; very large value = reject any regression.
@@ -330,7 +335,7 @@ The orchestrator handles benchmark repetition and convergence. The external scri
 2. **First real run:**
    - Parse output.
    - Store as element-wise best.
-   - Early abort: if `sum(user) > baseline_sum * (1 - min_improvement_pct / 100)`, the first run doesn't meet the improvement threshold — abort benchmark, report failure. This catches both regressions and insufficient improvements, avoiding ~30 min of futile convergence runs. The `BenchmarkError` carries the partial rows so they can be recorded on the idea file.
+   - Early abort: if `sum(user) > baseline_sum * (1 - early_abort_pct / 100)`, the first run doesn't meet the early abort threshold — abort benchmark, report failure. This catches both regressions and insufficient improvements, avoiding ~30 min of futile convergence runs. The `BenchmarkError` carries the partial rows so they can be recorded on the idea file. Note: `early_abort_pct` is typically set lower than `min_improvement_pct` — it's a quick-reject to save time, not the final acceptance gate.
 3. **Subsequent runs:**
    - Parse output. If output cannot be parsed (missing `user`, wrong number of lines, malformed values), treat as benchmark parse error → FAIL_IDEA (outcome: "benchmark error").
    - Update element-wise best (per-row minimum for each label).
@@ -521,7 +526,7 @@ BENCHMARK
   convergence loop (see Section 6)
   evaluate result (see Section 6)
   success → SUCCESS_IDEA
-  failure (performance) → FAIL_IDEA (outcome: "performance regression")
+  failure (performance target not met) → FAIL_IDEA (outcome: "target not reached")
   failure (early abort) → FAIL_IDEA (outcome: "benchmark early abort: <error details>")
   failure (parse error) → FAIL_IDEA (outcome: "benchmark error")
 
@@ -542,7 +547,7 @@ FAIL_IDEA
   move idea to ideas/done/, append outcome
   if benchmark ran (incl. early abort): append perf table to idea file
   commit script repo
-  increment consecutive perf failure counter (only for "performance regression";
+  increment consecutive perf failure counter (only for "target not reached";
     NOT for "build failure", "quality regression", "benchmark early abort: ...", or "benchmark error")
   → CHECK_TERMINATION
 
@@ -596,7 +601,7 @@ The script repo is committed at these points:
 Three conditions are checked after each idea completes (in CODE and TEST paths):
 
 1. **Max iterations:** `max_iterations` reached.
-2. **Stagnation:** `max_consecutive_perf_failures` consecutive ideas with outcome "performance regression" only. Build failures, quality regressions, benchmark early aborts, and benchmark errors do NOT count — they reflect tooling/coding issues, not exhaustion of the optimisation space.
+2. **Stagnation:** `max_consecutive_perf_failures` consecutive ideas with outcome "target not reached" only. Build failures, quality regressions, benchmark early aborts, and benchmark errors do NOT count — they reflect tooling/coding issues, not exhaustion of the optimisation space.
 3. **Time limit:** `max_runtime_minutes` exceeded.
 
 Manual stop (Ctrl+C) is handled by startup recovery on next run.

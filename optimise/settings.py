@@ -14,7 +14,7 @@ _REQUIRED_STRING_KEYS = ["target_repo", "branch", "optimisation_target", "instru
 # Keys that are converted to float
 _FLOAT_KEYS = [
     "min_improvement_pct", "individual_regression_tradeoff",
-    "benchmark_convergence_threshold_pct",
+    "benchmark_convergence_threshold_pct", "early_abort_pct",
 ]
 
 # Keys that are converted to int
@@ -123,6 +123,10 @@ def validate_settings(raw, script_repo):
     scopes = [s.strip() for s in raw_scope.split(",") if s.strip()]
     result["commit_scope"] = scopes
 
+    # Default early_abort_pct to min_improvement_pct if not provided
+    if "early_abort_pct" not in result:
+        result["early_abort_pct"] = result.get("min_improvement_pct", 0.5)
+
     return result
 
 
@@ -160,6 +164,11 @@ bench_cmd: <command to run performance benchmark>
 # Minimum sum(user) improvement to accept a change (percent).
 # Changes below this are treated as noise and reverted.
 min_improvement_pct: 0.5
+
+# Minimum improvement on the FIRST benchmark iteration to continue benchmarking (percent).
+# If the first run doesn't beat this, the benchmark is aborted early to save time.
+# Defaults to min_improvement_pct if not set. Typically set lower.
+early_abort_pct: 0.5
 
 # If any individual row regresses, sum improvement must also be at least
 # this multiplier times the worst individual row regression percent.

@@ -250,6 +250,23 @@ class TestFailIdea:
         assert "15.000s vs baseline 10.000s" in idea_content
 
 
+    def test_target_not_reached_increments_consecutive_perf_failures(self, tmp_path):
+        """'target not reached' counts toward stagnation."""
+        s = _make_build_state(tmp_path)
+        best = [{"user": 9.95, "cpu": 99.0}]
+        result = _fail_idea(s, "target not reached", bench_rows=best)
+        assert result["consecutive_perf_failures"] == 1
+
+    def test_early_abort_does_not_increment_consecutive_perf_failures(self, tmp_path):
+        """'benchmark early abort: ...' does NOT count toward stagnation."""
+        s = _make_build_state(tmp_path)
+        partial = [{"user": 15.0, "cpu": 150.0}]
+        result = _fail_idea(s, "benchmark early abort: Benchmark early abort: "
+                   "15.000s vs baseline 10.000s (-50.0%, need 5.0%)",
+                   bench_rows=partial)
+        assert result["consecutive_perf_failures"] == 0
+
+
 class TestNotApplicable:
     """Test that NOT_APPLICABLE LLM response is detected correctly."""
 
