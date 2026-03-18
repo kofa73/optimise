@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import MagicMock
 from optimise.cli import (
     do_init, _BuildState, _succeed_idea, _fail_idea,
-    _generate_ideas, GenerationResult,
+    _generate_ideas, GenerationResult, _do_build_test_benchmark,
 )
 from optimise.git import GitRepo
 from optimise.benchmark import format_perf_log
@@ -104,6 +104,7 @@ def _make_build_state(tmp_path, idea_file="idea.md", idea_subdir="testing"):
     settings = {
         "commit_prefix": "perf",
         "min_improvement_pct": 0.5,
+        "early_abort_pct": 0.5,
         "individual_regression_tradeoff": 2,
     }
 
@@ -117,6 +118,68 @@ def _make_build_state(tmp_path, idea_file="idea.md", idea_subdir="testing"):
         iteration=1,
         consecutive_perf_failures=0,
         start_time=0,
+    )
+
+
+def _make_bench_script(tmp_path, output_line):
+    """Create a benchmark script that outputs a single user/cpu line."""
+    script = tmp_path / "bench.sh"
+    script.write_text(f"#!/bin/sh\necho '{output_line}'\n")
+    script.chmod(0o755)
+    return str(script)
+
+
+def _make_full_build_state(tmp_path, bench_cmd, idea_file="idea.md",
+                           min_improvement_pct=0.5, early_abort_pct=0.5,
+                           individual_regression_tradeoff=2,
+                           baseline_user=10.0):
+    """Full _BuildState with all benchmark-required settings."""
+    script = tmp_path / "script"
+    target = tmp_path / "target"
+    script.mkdir()
+    target.mkdir()
+    _init_git(script)
+    _init_git(target)
+
+    for d in ["ideas/todo", "ideas/coding", "ideas/testing", "ideas/done", "perf-logs"]:
+        (script / d).mkdir(parents=True, exist_ok=True)
+
+    (script / "ideas" / "testing" / idea_file).write_text(
+        "Test idea\n\nDescription."
+    )
+
+    baseline = [{"user": baseline_user, "cpu": baseline_user * 10}]
+    from optimise.benchmark import format_perf_log
+    (script / "perf-logs" / "current-best-perf.md").write_text(format_perf_log(baseline))
+
+    (target / "src.c").write_text("modified")
+    subprocess.run(["git", "add", "src.c"], cwd=target, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "change"], cwd=target, check=True, capture_output=True)
+
+    settings = {
+        "commit_prefix": "perf",
+        "min_improvement_pct": min_improvement_pct,
+        "early_abort_pct": early_abort_pct,
+        "individual_regression_tradeoff": individual_regression_tradeoff,
+        "num_warmup_iterations": 0,
+        "benchmark_convergence_threshold_pct": 0.1,
+        "benchmark_convergence_tail_runs": 3,
+        "bench_cmd": bench_cmd,
+        "quality_cmd": "",
+        "commit_scope": ["src/"],
+    }
+
+    return _BuildState(
+        script_repo=str(script),
+        target_repo_path=str(target),
+        target_git=GitRepo(str(target)),
+        script_git=GitRepo(str(script)),
+        settings=settings,
+        idea_file=idea_file,
+        iteration=1,
+        consecutive_perf_failures=0,
+        start_time=0,
+        skip_build=True,
     )
 
 
@@ -265,6 +328,70 @@ class TestFailIdea:
                    "15.000s vs baseline 10.000s (-50.0%, need 5.0%)",
                    bench_rows=partial)
         assert result["consecutive_perf_failures"] == 0
+
+
+class TestDoBuildTestBenchmarkPerfTable:
+    """Integration tests: perf table is written for ALL ideas that run a benchmark."""
+
+    def _idea_content(self, tmp_path):
+        done = list((tmp_path / "script" / "ideas" / "done").iterdir())
+        assert len(done) == 1
+        return done[0].read_text()
+
+    def test_early_abort_idea_has_perf_table(self, tmp_path):
+        """Early abort (first run doesn't meet early_abort_pct) → perf table in done idea."""
+        # baseline=10.0, bench outputs 10.05 (regression) → early abort triggers
+        bench = _make_bench_script(tmp_path, "user=10.05, cpu=100.5")
+        s = _make_full_build_state(tmp_path, bench_cmd=bench,
+                                   baseline_user=10.0, early_abort_pct=0.5)
+        _do_build_test_benchmark(s, retries_left=0)
+        content = self._idea_content(tmp_path)
+        assert "# Individual timings" in content
+        assert "outcome: benchmark early abort:" in content
+
+    def test_target_not_reached_idea_has_perf_table(self, tmp_path):
+        """Benchmark converges but result < min_improvement_pct → perf table in done idea."""
+        # baseline=10.0, bench improves by 0.3% → passes early_abort (0.1%) but not min (2%)
+        bench = _make_bench_script(tmp_path, "user=9.97, cpu=99.7")
+        s = _make_full_build_state(tmp_path, bench_cmd=bench,
+                                   baseline_user=10.0,
+                                   early_abort_pct=0.1,
+                                   min_improvement_pct=2.0)
+        _do_build_test_benchmark(s, retries_left=0)
+        content = self._idea_content(tmp_path)
+        assert "# Individual timings" in content
+        assert "outcome: target not reached" in content
+
+    def test_individual_regression_too_high_has_perf_table(self, tmp_path):
+        """Individual row regresses beyond tradeoff → perf table in done idea."""
+        import textwrap
+        # Two-row baseline: each row user=5.0 (sum=10.0)
+        # Bench result: row1=3.0 (improves), row2=6.9 (regresses 38%)
+        # Sum: 9.9 = 1% improvement overall
+        # regression_tradeoff=2: requires 2×38%=76% improvement, only 1% → Gate 2 fails
+        bench = tmp_path / "bench2.sh"
+        bench.write_text(textwrap.dedent("""\
+            #!/bin/sh
+            echo 'user=3.0, cpu=30.0'
+            echo 'user=6.9, cpu=69.0'
+        """))
+        bench.chmod(0o755)
+        from optimise.benchmark import format_perf_log
+        baseline_two = [{"user": 5.0, "cpu": 50.0}, {"user": 5.0, "cpu": 50.0}]
+        # Write the two-row baseline BEFORE creating the build state
+        (tmp_path / "baseline_two.md").write_text(format_perf_log(baseline_two))
+        s = _make_full_build_state(tmp_path, bench_cmd=str(bench),
+                                   baseline_user=10.0,           # initial write (one-row)
+                                   early_abort_pct=0.5,          # sum 9.9 < 9.95 → passes
+                                   individual_regression_tradeoff=2)  # Gate 2 active
+        # Overwrite with two-row baseline so evaluate_success sees two rows matching bench output
+        (tmp_path / "script" / "perf-logs" / "current-best-perf.md").write_text(
+            format_perf_log(baseline_two))
+        _do_build_test_benchmark(s, retries_left=0)
+        content = self._idea_content(tmp_path)
+        assert "# Individual timings" in content
+        assert "outcome: target not reached" in content
+
 
 
 class TestNotApplicable:
