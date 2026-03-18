@@ -1,3 +1,0 @@
-perf: Defer symmetric pixel combinations to accumulation loop to eliminate stack arrays
-
-The pixel loop currently computes and stores 10 `dt_aligned_pixel_t` arrays for symmetric combinations (e.g., `LF_cross`, `HF_sum_corners`) before the `dt_vector_exp` barrier, forcing over 160 bytes of register spilling to the stack per pixel. By fetching only the direct neighbors needed for gradients in the first pass, and deferring the full 3x3 neighborhood fetches and symmetric math until after the exponential barrier, these combinations can be computed as pure scalars directly inside the accumulation loop. This relies on fast L1 cache hits for the re-fetched pixels to entirely eliminate the massive stack allocation overhead without altering the floating-point operation sequence.
