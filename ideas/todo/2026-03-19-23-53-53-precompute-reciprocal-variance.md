@@ -1,0 +1,3 @@
+perf: precompute reciprocal variance to replace division in final integration loop
+
+Floating-point division is a high-latency operation that severely bottlenecks the final state update loop (`acc[c] / variance[c]`). By precomputing the reciprocal directly during the preceding regularization pass (`variance[c] = 1.0f / (variance_threshold + variance[c] * regularization_factor)`), we can convert the division in the integration loop into a much faster multiplication (`acc[c] * variance[c]`). This shifts the latency outside of the highly congested accumulator loop.

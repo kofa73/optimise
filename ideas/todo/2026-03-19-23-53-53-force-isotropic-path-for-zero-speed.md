@@ -1,0 +1,3 @@
+perf: force isotropic path for zero-speed orders to leverage existing unswitching
+
+Attempting to skip loop iterations for zero-speed orders creates SIMD-breaking branches. However, when both gradient-driven orders (0 and 2) or both laplacian-driven orders (1 and 3) have speeds of zero (`ABCD == 0.f`), their angles and magnitudes are multiplied by zero anyway. By preemptively overwriting their `isotropy_type` to `DT_ISOTROPY_ISOTROPE` at the top of the function, we cleanly trick the existing `grad_is_isotropic` unswitched macros into routing execution to the faster loop variants, safely bypassing all expensive trig and magnitude math without introducing new macros.

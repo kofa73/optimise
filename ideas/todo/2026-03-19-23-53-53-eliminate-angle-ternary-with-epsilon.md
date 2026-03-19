@@ -1,0 +1,3 @@
+perf: eliminate angle calculation conditionals by adding a tiny epsilon
+
+To prevent division by zero when calculating angles, the code currently utilizes SIMD-disrupting ternary conditionals (`magnitude != 0.f ? ... : 1.f`). Since a zero magnitude implies an absolutely flat region where orientation theoretically doesn't matter (as long as `cos² + sin² = 1` is preserved), we can simply add a tiny, non-underflowing epsilon (`1e-15f`) to `grad_x` and `lapl_x` prior to the magnitude calculation. This guarantees a non-zero hypotenuse, forces perfect defaults, and completely eliminates the ternary branches.

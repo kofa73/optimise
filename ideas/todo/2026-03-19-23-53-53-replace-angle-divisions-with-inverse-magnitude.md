@@ -1,0 +1,3 @@
+perf: compute inverse magnitude to replace multiple divisions when finding angles
+
+When determining `cos_grad` and `sin_grad`, the code currently performs two separate, high-latency floating-point divisions by `magnitude_grad`. By computing the reciprocal once (`inv_mag = 1.0f / magnitude_grad`) and using it to multiply the x and y derivatives (`grad_x * inv_mag`), we replace two divisions with one division and two fast multiplications. This eliminates up to 8 divisions per pixel in the critical path (4 channels × 2 orders).
