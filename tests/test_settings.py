@@ -74,8 +74,7 @@ class TestValidateSettings:
             "max_iterations": "50",
             "max_consecutive_perf_failures": "5",
             "max_runtime_minutes": "300",
-            "review_frequency": "3",
-            "min_ideas": "5",
+            "idea_generation_batch_size": "5",
             "commit_prefix": "perf",
         }
 
@@ -86,6 +85,7 @@ class TestValidateSettings:
         # Numeric values are converted
         assert result["min_improvement_pct"] == 0.5
         assert result["max_retries"] == 5
+        assert result["idea_generation_batch_size"] == 5
 
     def test_missing_target_repo_fails(self, tmp_path):
         settings = self._make_valid_settings(tmp_path)

@@ -21,7 +21,7 @@ _FLOAT_KEYS = [
 _INT_KEYS = [
     "num_warmup_iterations", "benchmark_convergence_tail_runs",
     "max_retries", "max_iterations", "max_consecutive_perf_failures",
-    "max_runtime_minutes", "review_frequency", "min_ideas",
+    "max_runtime_minutes", "idea_generation_batch_size",
 ]
 
 
@@ -201,13 +201,9 @@ max_consecutive_perf_failures: 5
 # Stop after this many minutes of total runtime.
 max_runtime_minutes: 300
 
-# === Strategy Review ===
-# Run learnings review every N iterations.
-review_frequency: 3
-
 # === Ideas ===
-# Minimum number of ideas to maintain in ideas/todo.
-min_ideas: 5
+# Number of ideas to generate in a batch when the todo list is empty.
+idea_generation_batch_size: 5
 
 # === Git ===
 # Commit message prefix for target repo commits.
