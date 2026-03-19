@@ -216,21 +216,37 @@ def do_run(directory):
             continue
 
         if state == StartupState.GENERATE:
-            todo_before = len(list_ideas(directory, "todo"))
-            gen_result = _generate_ideas(
-                directory, settings, ai, target_repo_path,
-                instructions, target_files,
-            )
-            todo_after = len(list_ideas(directory, "todo"))
-            if todo_after > todo_before:
-                script_git.commit_all(
-                    f"generated {todo_after - todo_before} new ideas"
+            todo_files = list_ideas(directory, "todo")
+            if not todo_files:
+                if list_ideas(directory, "done"):
+                    _do_review(directory, script_git, ai, instructions, target_repo_path)
+                
+                todo_before = 0
+                gen_result = _generate_ideas(
+                    directory, settings, ai, target_repo_path,
+                    instructions, target_files,
                 )
+                todo_after = len(list_ideas(directory, "todo"))
+                if todo_after > todo_before:
+                    script_git.commit_all(
+                        f"generated {todo_after - todo_before} new ideas"
+                    )
 
-            if gen_result == GenerationResult.LLM_FAILURE:
-                log.warning("[GENERATE] All LLM providers failed — "
-                            "will retry after cooldown")
-                continue
+                if gen_result == GenerationResult.LLM_FAILURE:
+                    log.warning("[GENERATE] All LLM providers failed — "
+                                "will retry after cooldown")
+                    continue
+                
+                todo_files = list_ideas(directory, "todo")
+
+            # Check if generation still left us with no ideas
+            if not todo_files:
+                log.warning("[GENERATE] No ideas to execute.")
+                # We could break or continue; returning to loop will just trigger terminate or re-run.
+                # Since LLM failed, the original behavior was to wait/continue, but here we can just continue
+                # which will trigger termination or generation again. But since LLM_FAILURE is caught above, 
+                # reaching here means LLM returned OK but no ideas. We break.
+                break
 
             reason = check_termination(
                 iteration, settings["max_iterations"],
@@ -243,7 +259,7 @@ def do_run(directory):
                 break
 
             # Pick first idea lexicographically
-            todo_files = sorted(list_ideas(directory, "todo"))
+            todo_files = sorted(todo_files)
             selected = todo_files[0]
             move_idea(directory, selected, "todo", "coding")
             log.info(f"[GENERATE] Selected idea: {selected}")
@@ -321,10 +337,6 @@ def do_run(directory):
                 log.info(f"TERMINATING: {reason.value}")
                 script_git.commit_all(f"optimiser: terminated — {reason.value}")
                 break
-
-            # Check review
-            if iteration % settings["review_frequency"] == 0:
-                _do_review(directory, script_git, ai, instructions, target_repo_path)
 
             state = StartupState.GENERATE
             continue
