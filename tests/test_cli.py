@@ -208,7 +208,7 @@ class TestGenerateIdeas:
              0, "test-provider"),
         ])
         result = _generate_ideas(
-            directory=script_repo, settings={"min_ideas": 1},
+            directory=script_repo, settings={"idea_generation_batch_size": 1},
             ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
         )
         assert result == GenerationResult.OK
@@ -222,18 +222,17 @@ class TestGenerateIdeas:
             ("", 1, "test-provider"),
         ])
         result = _generate_ideas(
-            directory=script_repo, settings={"min_ideas": 1},
+            directory=script_repo, settings={"idea_generation_batch_size": 1},
             ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
         )
         assert result == GenerationResult.LLM_FAILURE
 
-    def test_no_generation_needed_returns_ok(self, tmp_path):
-        """If todo already has enough ideas, no generation needed → OK."""
+    def test_batch_size_zero_returns_ok(self, tmp_path):
+        """If idea_generation_batch_size is 0, no generation needed → OK."""
         script_repo = self._setup(tmp_path)
-        (tmp_path / "script" / "ideas" / "todo" / "existing.md").write_text("Existing idea\n\nDo this.")
         ai = self._make_ai([])  # should not be called
         result = _generate_ideas(
-            directory=script_repo, settings={"min_ideas": 1},
+            directory=script_repo, settings={"idea_generation_batch_size": 0},
             ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
         )
         assert result == GenerationResult.OK
@@ -246,7 +245,7 @@ class TestGenerateIdeas:
             ("here is some random text with no structure", 0, "test-provider"),
         ])
         result = _generate_ideas(
-            directory=script_repo, settings={"min_ideas": 1},
+            directory=script_repo, settings={"idea_generation_batch_size": 1},
             ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
         )
         assert result == GenerationResult.LLM_FAILURE

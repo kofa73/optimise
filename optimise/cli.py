@@ -91,8 +91,7 @@ def _generate_ideas(directory, settings, ai, target_repo_path, instructions, tar
       OK           — ideas were added, or todo already had enough
       LLM_FAILURE  — LLM failed to produce any parseable ideas
     """
-    todo_count = len(list_ideas(directory, "todo"))
-    needed = settings["min_ideas"] - todo_count
+    needed = settings["idea_generation_batch_size"]
 
     if needed <= 0:
         return GenerationResult.OK
