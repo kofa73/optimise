@@ -1,0 +1,3 @@
+perf: Skip redundant cross-corner array calculations for fully isotropic paths
+
+The `LF_cross` and `HF_cross` aligned pixel arrays are computed unconditionally for every pixel, requiring memory writes and arithmetic subtractions. However, these diagonal cross arrays are strictly ignored by the `DT_ISOTROPY_ISOTROPE` convolution logic. By wrapping their assignments in a compile-time macro check for `(!GRAD_ISOTROPIC || !LAPL_ISOTROPIC)`, we completely eliminate dead vector arithmetic and stack array writes during isotropic diffusion passes without introducing new dynamic branches.
