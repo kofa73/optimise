@@ -1,3 +1,0 @@
-perf: pre-negate anisotropy constants to eliminate inner-loop unary negations
-
-The exponents for the diffusion tensor are computed per-pixel using `c2[k] = -magnitude * anisotropy[k]`. Since `anisotropy` is constant for the entire pass, we can pre-negate these array values once outside the main loop (`neg_anisotropy[k] = -anisotropy[k]`). This replaces the inner-loop computation with a direct multiplication (`magnitude * neg_anisotropy[k]`), stripping an unnecessary floating-point sign flip from the core gradient pass.
