@@ -1,3 +1,0 @@
-perf: eliminate sin_theta_sq arrays by rewriting anisotropic tensors via 1 - cos2
-
-The anisotropic tensor weights currently require both `cos_theta2` and `sin_theta2` stack arrays. Because `sin²(θ) = 1 - cos²(θ)`, we can algebraically rewrite the isophote weights as `a11 = c2 + cos_theta2 * (1 - c2)` and `a22 = 1.0f - cos_theta2 * (1 - c2)`. This mathematically identical formulation allows us to completely remove the `sin_theta_grad_sq` and `sin_theta_lapl_sq` arrays from the stack, saving L1 memory traffic and the ALU instructions used to compute `sqf(sin_grad)`.
