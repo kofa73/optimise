@@ -1,3 +1,0 @@
-perf: bake 0.5f factor into cos_theta_sin_theta arrays to save inner-loop muls
-
-In `accumulate_convolution_direct`, the cross-term `b11` computes `(c2 - 1.0f) * cos_theta_sin_theta * 0.5f`. Because this accumulation function is called up to 4 times per pixel, the `0.5f` multiplication is repeated needlessly. By multiplying `cos_grad * sin_grad` and `cos_lapl * sin_lapl` by `0.5f` immediately when they are calculated and stored in the `cos_theta_sin_theta` stack arrays, we can entirely eliminate the `0.5f` multiplication from the inner accumulation loops.
