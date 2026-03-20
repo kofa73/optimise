@@ -1,3 +1,0 @@
-perf: pre-multiply isotropic kernel constants by abcd speed factors
-
-For isotropic diffusion, the accumulation loop calculates a weighted sum of neighbors using constants `0.25f`, `0.5f`, and `-3.f`, and then multiplies the total sum by `abcd`. By distributing `abcd` into the constants before the row loop (`w_corner = abcd * 0.25f`, etc.), we can apply these pre-scaled weights directly to the pixel sums. This removes the outer `abcd * (...)` multiplication from the innermost loop, saving 1 multiply per channel for all isotropic orders.
