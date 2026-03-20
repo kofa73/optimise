@@ -1,3 +1,0 @@
-perf: extract (1.0f - c2) common subexpression to reduce anisotropic tensor ALUs
-
-In `accumulate_convolution_direct`, the anisotropic tensor weights `a11`, `a22`, and `b11` all fundamentally depend on the difference `(1.0f - c2[c])`. By calculating this as a scalar common subexpression (`inv_c2 = 1.0f - c2[c]`) and rewriting the formulas (e.g., `a11 = c2 + cos2 * inv_c2`), we can compute all three tensor coefficients with only 2 multiplications and 2 additions, down from the current 4 multiplications and 3 additions. This noticeably reduces critical-path ALU pressure in the innermost accumulation loop.
