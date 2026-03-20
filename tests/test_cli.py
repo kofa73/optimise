@@ -316,7 +316,7 @@ class TestFailIdea:
         """'target not reached' counts toward stagnation."""
         s = _make_build_state(tmp_path)
         best = [{"user": 9.95, "cpu": 99.0}]
-        result = _fail_idea(s, "target not reached", bench_rows=best)
+        result = _fail_idea(s, "target not reached: 9.950s vs baseline 10.000s (-0.5%, need 0.5%)", bench_rows=best)
         assert result["consecutive_perf_failures"] == 1
 
     def test_early_abort_does_not_increment_consecutive_perf_failures(self, tmp_path):
@@ -359,7 +359,7 @@ class TestDoBuildTestBenchmarkPerfTable:
         _do_build_test_benchmark(s, retries_left=0)
         content = self._idea_content(tmp_path)
         assert "# Individual timings" in content
-        assert "outcome: target not reached" in content
+        assert "outcome: target not reached: 9.970s vs baseline 10.000s (+0.3%, need 2.0%)" in content
 
     def test_individual_regression_too_high_has_perf_table(self, tmp_path):
         """Individual row regresses beyond tradeoff → perf table in done idea."""
@@ -389,7 +389,7 @@ class TestDoBuildTestBenchmarkPerfTable:
         _do_build_test_benchmark(s, retries_left=0)
         content = self._idea_content(tmp_path)
         assert "# Individual timings" in content
-        assert "outcome: target not reached" in content
+        assert "outcome: target not reached: 9.900s vs baseline 10.000s (+1.0%, need 0.5%)" in content
 
 
 

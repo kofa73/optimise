@@ -466,7 +466,10 @@ def _do_build_test_benchmark(s, retries_left):
         return _succeed_idea(s, best, improvement_pct, detail, baseline_sum)
     else:
         log.info(f"FAILED: {detail}")
-        return _fail_idea(s, "target not reached", bench_rows=best)
+        result_sum = sum_user(best)
+        need = s.settings["min_improvement_pct"]
+        msg = f"target not reached: {result_sum:.3f}s vs baseline {baseline_sum:.3f}s ({improvement_pct:+.1f}%, need {need}%)"
+        return _fail_idea(s, msg, bench_rows=best)
 
 
 def _succeed_idea(s, best, improvement_pct, detail, baseline_sum):
@@ -528,7 +531,7 @@ def _fail_idea(s, outcome, bench_rows=None, explanation=None):
     s.script_git.commit_all(f"idea failed ({outcome}): {idea_title[:60]}")
 
     cpf = s.consecutive_perf_failures
-    if outcome == "target not reached":
+    if outcome.startswith("target not reached"):
         cpf += 1
 
     return {"consecutive_perf_failures": cpf}

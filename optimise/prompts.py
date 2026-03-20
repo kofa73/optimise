@@ -30,7 +30,7 @@ Read these files to understand the code: {targets}
 
 # Your task
 
-Generate exactly 10 new optimisation ideas for the target files.
+Generate exactly {count} new optimisation ideas for the target files.
 
 For EACH idea, output in this exact format (with the triple-dash separator between ideas):
 
