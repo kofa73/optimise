@@ -31,7 +31,7 @@ def main():
                            help="Script repo directory (default: current)")
 
     for cmd in ["build", "test", "qualitycheck", "benchmark"]:
-        p = subparsers.add_parser(cmd, help=f"Run {cmd} step")
+        p = subparsers.add_parser(cmd, help=f"Run {cmd} step (accepts optional commit ID)")
         p.add_argument("--dir", default=".", help="Script repo directory (default: current)")
         p.add_argument("commit", nargs="?", default=None, help="Optional commit ID to test")
 
