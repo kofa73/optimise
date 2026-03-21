@@ -1,0 +1,3 @@
+perf: eliminate center pixel stack arrays by fetching directly from memory
+
+The `LF_center` and `HF_center` stack arrays are currently used purely to cache the center pixel values (`lf4` and `hf4`) for the final accumulation pass. Because the underlying memory addresses (`LF + n4` and `HF + n4`) remain hot in the L1 cache from the immediately preceding gradient computations, we can omit these two intermediate stack arrays entirely. Passing the pointers directly to the accumulation function eliminates redundant local memory writes and reduces peak stack footprint.
