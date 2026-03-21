@@ -82,6 +82,35 @@ class TestCreateIdea:
         assert "z-idea" in ideas[0]
         assert "a-idea" in ideas[1]
 
+    def test_ordinal_prefix(self, tmp_path):
+        """With ordinal=1, filename gets '001-' prefix before timestamp."""
+        import re
+        todo = tmp_path / "ideas" / "todo"
+        todo.mkdir(parents=True)
+        path = create_idea(str(tmp_path), "my-idea", "Title\n\nBody", ordinal=1)
+        filename = os.path.basename(path)
+        assert re.match(r"001-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-my-idea\.md$", filename), \
+            f"Expected 001-timestamp-my-idea.md, got: {filename}"
+
+    def test_ordinal_prefix_three_digits(self, tmp_path):
+        """Ordinal 42 becomes '042-'."""
+        import re
+        todo = tmp_path / "ideas" / "todo"
+        todo.mkdir(parents=True)
+        path = create_idea(str(tmp_path), "idea-x", "Title\n\nBody", ordinal=42)
+        filename = os.path.basename(path)
+        assert filename.startswith("042-"), f"Expected 042- prefix, got: {filename}"
+
+    def test_no_ordinal_no_prefix(self, tmp_path):
+        """Without ordinal, filename starts with timestamp (backward compat)."""
+        import re
+        todo = tmp_path / "ideas" / "todo"
+        todo.mkdir(parents=True)
+        path = create_idea(str(tmp_path), "idea-y", "Title\n\nBody")
+        filename = os.path.basename(path)
+        assert re.match(r"\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-idea-y\.md$", filename), \
+            f"Expected timestamp-idea-y.md, got: {filename}"
+
     def test_user_prefix_sorts_before_timestamp(self, tmp_path):
         """User 000- prefix sorts before any timestamp-prefixed idea."""
         todo = tmp_path / "ideas" / "todo"

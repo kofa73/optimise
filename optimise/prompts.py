@@ -45,6 +45,7 @@ Rules:
 - Filenames must use only [a-zA-Z0-9_-], no extension
 - Each idea must be genuinely different from the existing ideas listed above
 - Focus on ideas that are likely to succeed based on the learnings
+- List ideas in descending order of expected improvement (most impactful first, least impactful last)
 """
 
 

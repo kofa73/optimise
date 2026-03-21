@@ -250,6 +250,26 @@ class TestGenerateIdeas:
         )
         assert result == GenerationResult.LLM_FAILURE
 
+    def test_ideas_have_ordinal_prefixes(self, tmp_path):
+        """Generated ideas get ordinal prefixes reflecting LLM output order."""
+        script_repo = self._setup(tmp_path)
+        ai = self._make_ai([
+            ("---\nFILENAME: best-idea\nTITLE: Best optimisation\nDESCRIPTION:\nBig win.\n---\n"
+             "---\nFILENAME: ok-idea\nTITLE: Average optimisation\nDESCRIPTION:\nSmall win.\n---\n",
+             0, "test-provider"),
+        ])
+        result = _generate_ideas(
+            directory=script_repo, settings={"idea_generation_batch_size": 2},
+            ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
+        )
+        assert result == GenerationResult.OK
+        from optimise.state import list_ideas
+        ideas = list_ideas(script_repo, "todo")
+        assert len(ideas) == 2
+        # First idea (best) gets 001-, second gets 002-
+        assert ideas[0].startswith("001-"), f"Expected 001- prefix, got: {ideas[0]}"
+        assert ideas[1].startswith("002-"), f"Expected 002- prefix, got: {ideas[1]}"
+
 
 class TestSucceedIdea:
     def test_no_per_idea_perf_log_file(self, tmp_path):

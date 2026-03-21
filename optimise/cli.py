@@ -113,9 +113,9 @@ def _generate_ideas(directory, settings, ai, target_repo_path, instructions, tar
     if not ideas:
         return GenerationResult.LLM_FAILURE
 
-    for idea in ideas:
+    for idx, idea in enumerate(ideas, start=1):
         content = f"{idea['title']}\n\n{idea['description']}"
-        create_idea(directory, idea["filename"], content)
+        create_idea(directory, idea["filename"], content, ordinal=idx)
 
     return GenerationResult.OK
 
@@ -367,9 +367,6 @@ def do_run(directory):
                 log.info(f"TERMINATING: {reason.value}")
                 script_git.commit_all(f"optimiser: terminated — {reason.value}")
                 break
-
-            if iteration % settings["review_frequency"] == 0:
-                _do_review(directory, script_git, ai, instructions, target_repo_path)
 
             state = StartupState.GENERATE
             continue

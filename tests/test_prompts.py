@@ -21,6 +21,18 @@ class TestGenerationPrompt:
         assert "Title A" in prompt
         assert "3" in prompt
 
+    def test_instructs_descending_order_by_expected_improvement(self):
+        prompt = build_generation_prompt(
+            instructions="Optimise",
+            learnings="",
+            existing_titles=[],
+            count=3,
+            target_files=["src/main.c"],
+        )
+        lower = prompt.lower()
+        assert "descending" in lower or "most" in lower
+        assert "improvement" in lower or "impact" in lower
+
     def test_includes_target_files(self):
         prompt = build_generation_prompt(
             instructions="Optimise",
