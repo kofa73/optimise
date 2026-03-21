@@ -561,7 +561,7 @@ def _do_review(directory, script_git, ai, instructions, target_repo_path):
     script_git.commit_all("updated learnings")
 
 
-def do_command(command, directory, commit=None):
+def do_command(command, directory, commit=None, _skip_build=False):
     """Execute a specific standalone command (build, test, qualitycheck, benchmark)."""
     directory = os.path.abspath(directory)
     settings_path = os.path.join(directory, "settings.conf")
@@ -602,13 +602,16 @@ def do_command(command, directory, commit=None):
                 log.error(str(e))
                 sys.exit(1)
                 
-    if command == "build":
+    if not _skip_build and command in ("build", "qualitycheck", "benchmark", "test"):
         ok, output = run_shell_step("BUILD", settings["build_cmd"], cwd=target_repo_path)
         if not ok:
             log.error("Build failed.")
             print(output)
             sys.exit(1)
         log.info("Build finished successfully.")
+
+    if command == "build":
+        pass
         
     elif command == "qualitycheck":
         ok, output = run_shell_step("QUALITY", settings["quality_cmd"], cwd=target_repo_path)
@@ -659,5 +662,5 @@ def do_command(command, directory, commit=None):
             sys.exit(1)
             
         log.info("Quality check passed, starting benchmark...")
-        do_command("benchmark", directory)
+        do_command("benchmark", directory, commit=commit, _skip_build=True)
 

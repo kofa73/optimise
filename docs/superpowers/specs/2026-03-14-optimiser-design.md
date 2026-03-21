@@ -207,11 +207,12 @@ Running `init` in a directory that is already fully scaffolded is safe (idempote
 ### Standalone Commands
 
 The Optimiser provides standalone commands to run parts of the loop independently without initiating the full AI generation loop. They are executed with `python optimise.py <command> [--dir <script_repo>] [commit_id]`.
+Note: All standalone commands automatically execute `build_cmd` first to ensure the codebase is compiled.
 
 - `build`: Runs `build_cmd`.
-- `qualitycheck`: Runs `quality_cmd`.
-- `benchmark`: Runs `bench_cmd` through the full convergence loop and evaluates improvements against the baseline.
-- `test`: Sequentially runs `quality_cmd` followed by `benchmark`.
+- `qualitycheck`: Runs `build_cmd` followed by `quality_cmd`.
+- `benchmark`: Runs `build_cmd` followed by `bench_cmd` through the full convergence loop and evaluates improvements against the baseline.
+- `test`: Sequentially runs `build_cmd`, `quality_cmd`, followed by `benchmark`.
 
 **Optional `[commit_id]` Parameter:**
 If a commit hash is passed to a standalone command, it safely loads the specific historical versions of `optimisation_target` into the current target repo for testing.

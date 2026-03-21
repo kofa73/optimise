@@ -452,7 +452,7 @@ class TestDoCommand:
         
         s = _make_full_build_state(tmp_path, bench_cmd="echo user=1.0, cpu=1.0")
         settings_path = tmp_path / "script" / "settings.conf"
-        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\n")
+        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo BUILD_RUN\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\n")
         (tmp_path / "script" / "instructions.md").write_text("test")
         
         calls = []
@@ -469,7 +469,60 @@ class TestDoCommand:
         
         do_command("test", str(tmp_path / "script"))
         
+        assert len(calls) == 2
+        assert calls[0][0] == "BUILD"
+        assert calls[0][1] == "echo BUILD_RUN"
+        assert calls[1][0] == "QUALITY"
+        assert len(bench_calls) == 1
+
+    def test_qualitycheck_runs_build_then_quality(self, tmp_path, monkeypatch):
+        from optimise.cli import do_command
+        import optimise.cli
+        
+        s = _make_full_build_state(tmp_path, bench_cmd="echo")
+        settings_path = tmp_path / "script" / "settings.conf"
+        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbench_cmd: echo\nbuild_cmd: echo BUILD_RUN\nquality_cmd: echo QUALITY_RUN\noptimisation_target: src.c\ncommit_scope: src/\n")
+        (tmp_path / "script" / "instructions.md").write_text("test")
+        
+        calls = []
+        def mock_run_shell_step(name, cmd, cwd):
+            calls.append((name, cmd))
+            return True, "ok"
+        monkeypatch.setattr(optimise.cli, "run_shell_step", mock_run_shell_step)
+        
+        do_command("qualitycheck", str(tmp_path / "script"))
+        
+        assert len(calls) == 2
+        assert calls[0][0] == "BUILD"
+        assert calls[0][1] == "echo BUILD_RUN"
+        assert calls[1][0] == "QUALITY"
+        assert calls[1][1] == "echo QUALITY_RUN"
+
+    def test_benchmark_runs_build_then_benchmark(self, tmp_path, monkeypatch):
+        from optimise.cli import do_command
+        import optimise.cli
+        
+        s = _make_full_build_state(tmp_path, bench_cmd="echo user=1.0, cpu=1.0")
+        settings_path = tmp_path / "script" / "settings.conf"
+        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo BUILD_RUN\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\n")
+        (tmp_path / "script" / "instructions.md").write_text("test")
+        
+        calls = []
+        def mock_run_shell_step(name, cmd, cwd):
+            calls.append((name, cmd))
+            return True, "ok"
+        monkeypatch.setattr(optimise.cli, "run_shell_step", mock_run_shell_step)
+        
+        bench_calls = []
+        def mock_run_benchmark_loop(*args, **kwargs):
+            bench_calls.append(True)
+            return [{"user": 1.0, "cpu": 1.0}]
+        monkeypatch.setattr(optimise.cli, "run_benchmark_loop", mock_run_benchmark_loop)
+        
+        do_command("benchmark", str(tmp_path / "script"))
+        
         assert len(calls) == 1
-        assert calls[0][0] == "QUALITY"
+        assert calls[0][0] == "BUILD"
+        assert calls[0][1] == "echo BUILD_RUN"
         assert len(bench_calls) == 1
 

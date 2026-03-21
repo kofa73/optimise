@@ -55,7 +55,7 @@ python /path/to/optimiser/optimise.py run
 The script can be stopped with `Ctrl+C`. On restart, a startup recovery sequence handles any orphaned state files or uncommitted changes in the target repository.
 
 ### 4. Standalone Commands
-Individual stages of the optimization pipeline can be executed manually:
+Individual stages of the optimization pipeline can be executed manually. Note that all of these commands automatically execute the `build_cmd` first to ensure the codebase is compiled before testing or benchmarking:
 ```bash
 python /path/to/optimiser/optimise.py build
 python /path/to/optimiser/optimise.py qualitycheck
