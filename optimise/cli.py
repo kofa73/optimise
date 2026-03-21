@@ -662,5 +662,5 @@ def do_command(command, directory, commit=None, _skip_build=False):
             sys.exit(1)
             
         log.info("Quality check passed, starting benchmark...")
-        do_command("benchmark", directory, commit=commit, _skip_build=True)
+        do_command("benchmark", directory, commit=None, _skip_build=True)
 

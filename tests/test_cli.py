@@ -526,3 +526,47 @@ class TestDoCommand:
         assert calls[0][1] == "echo BUILD_RUN"
         assert len(bench_calls) == 1
 
+    def test_test_runs_with_commit_does_not_fail_benchmark(self, tmp_path, monkeypatch):
+        from optimise.cli import do_command
+        import optimise.cli
+        
+        s = _make_full_build_state(tmp_path, bench_cmd="echo user=1.0, cpu=1.0")
+        settings_path = tmp_path / "script" / "settings.conf"
+        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo BUILD_RUN\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src/src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\n")
+        (tmp_path / "script" / "instructions.md").write_text("test")
+        
+        calls = []
+        def mock_run_shell_step(name, cmd, cwd):
+            calls.append((name, cmd))
+            return True, "ok"
+        monkeypatch.setattr(optimise.cli, "run_shell_step", mock_run_shell_step)
+        
+        bench_calls = []
+        def mock_run_benchmark_loop(*args, **kwargs):
+            bench_calls.append(True)
+            return [{"user": 1.0, "cpu": 1.0}]
+        monkeypatch.setattr(optimise.cli, "run_benchmark_loop", mock_run_benchmark_loop)
+        
+        target = tmp_path / "target"
+        (target / "src").mkdir()
+        (target / "src" / "src.c").write_text("old content")
+        subprocess.run(["git", "add", "src/src.c"], cwd=target, check=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=target, check=True)
+        
+        (target / "src" / "src.c").write_text("new content with different length")
+        subprocess.run(["git", "add", "src/src.c"], cwd=target, check=True)
+        subprocess.run(["git", "commit", "-m", "new"], cwd=target, check=True)
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=target, check=True, capture_output=True).stdout.decode().strip()
+
+        
+        subprocess.run(["git", "reset", "--hard", "HEAD~1"], cwd=target, check=True)
+        
+        # do_command should complete without SystemExit — the dirty check must
+        # only run once, before fetching file contents, not again inside the
+        # recursive benchmark call.
+        do_command("test", str(tmp_path / "script"), commit=commit)
+        
+        assert len(calls) == 2
+        assert len(bench_calls) == 1
+
+
