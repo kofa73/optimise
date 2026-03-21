@@ -43,6 +43,7 @@ Edit `settings.conf` to configure the required paths and commands:
 - `optimisation_target`: The source file(s) the LLM is allowed to modify.
 - `build_cmd`, `bench_cmd`, `quality_cmd`: Shell commands to build, benchmark, and run test suites.
 - `commit_scope`: The directory scope for dirty file checks and rollbacks (e.g., `src/`).
+- `disabled_providers`: (Optional) A comma-separated list of AI providers to permanently disable (e.g., `claude` or `gemini`). Providers missing required system binaries are also permanently disabled automatically.
 
 Next, document the specific optimization goals for the LLM in `instructions.md`.
 

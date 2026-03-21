@@ -185,6 +185,11 @@ commit_prefix: perf
 # Only commit changed files under these path prefixes (comma-separated).
 # Prevents accidentally committing unrelated WIP changes in the target repo.
 commit_scope: src/
+
+# === AI Providers ===
+# Supported providers: claude, gemini
+# Comma-separated list of providers to permanently disable.
+disabled_providers: 
 ```
 
 ### The `init` Command
@@ -425,7 +430,9 @@ Hardcoded: claude and gemini. Same CLI invocation patterns as the current orches
 
 ### Failover
 
-Random provider selection per call. On failure, disable the failed provider. If all providers exhausted, wait 5 minutes, re-enable all, retry. This waiting loop runs indefinitely (costs nothing) and is safe to interrupt (Ctrl+C) — no processing is in progress during the wait. Providers are reset at the start of each main loop iteration.
+Providers (e.g., `gemini`, `claude`) are permanently disabled on initialization if their respective CLI binaries are not detected on the host system or if they are explicitly listed in the `disabled_providers` setting. If no available providers remain after initialization, the process terminates immediately.
+
+For runtime API or network failures, random provider selection is attempted per call. On consecutive failure, the system falls back to the remaining available providers. If all available providers exhaust their attempt limits for a specific call, the router sleeps for a fixed duration (e.g., 5 minutes). Following sleep, temporary availability blocks are reset and retries continue. This waiting loop runs indefinitely (incurring zero cost) and safely yields to interruption (Ctrl+C). Providers reset temporary failure states at the start of each main loop iteration.
 
 ### Roles
 

@@ -186,6 +186,26 @@ class TestAIRouter:
         assert router.has_providers
 
     @patch("shutil.which", return_value="/usr/bin/claude")
+    def test_disabled_providers_are_permanently_ignored(self, mock_which):
+        router = AIRouter(providers=["claude", "gemini"], disabled_providers=["gemini"])
+        assert router.providers == ["claude"]
+        assert router.permanently_disabled == {"gemini"}
+        router.reset_providers()
+        assert router.providers == ["claude"]
+
+    @patch("shutil.which", side_effect=lambda x: None if "gemini" in x else "/usr/bin/binary")
+    def test_missing_binary_permanently_disables(self, mock_which):
+        router = AIRouter(providers=["claude", "gemini"])
+        assert router.providers == ["claude"]
+        assert "gemini" in router.permanently_disabled
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    def test_all_providers_disabled_exits(self, mock_which, caplog):
+        with pytest.raises(SystemExit):
+            AIRouter(providers=["claude", "gemini"], disabled_providers=["claude", "gemini"])
+        assert "No AI providers available" in caplog.text
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
     @patch("subprocess.run")
     def test_call_returns_stdout_on_success(self, mock_run, mock_which):
         mock_run.return_value = MagicMock(stdout="result text", returncode=0)

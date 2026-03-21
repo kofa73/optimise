@@ -149,7 +149,7 @@ def do_run(directory):
         sys.exit(1)
 
     # AI router
-    ai = AIRouter()
+    ai = AIRouter(disabled_providers=settings.get("disabled_providers", []))
 
     # Startup recovery
     startup = determine_startup_state(directory, target_repo_path, settings)

@@ -67,10 +67,15 @@ def get_version(provider_name):
 class AIRouter:
     """Routes AI calls to claude/gemini with failover."""
 
-    def __init__(self, providers=None):
+    def __init__(self, providers=None, disabled_providers=None):
         available = []
         self.version_warnings = {}  # provider -> warning message
+        permanently_disabled = set(disabled_providers or [])
+
         for name in (providers or ["claude", "gemini"]):
+            if name in permanently_disabled:
+                log.info(f"AI provider permanently disabled by settings: {name}")
+                continue
             if name not in PROVIDERS:
                 log.warning(f"Unknown AI provider: {name}")
                 continue
@@ -80,10 +85,12 @@ class AIRouter:
                 log.info(f"AI provider available: {name}")
                 self._check_version(name)
             else:
-                log.warning(f"AI provider not found: {name} ({binary})")
+                log.warning(f"AI provider permanently disabled (not found): {name} ({binary})")
+                permanently_disabled.add(name)
         if not available:
-            log.error("No AI providers available")
+            log.error("No AI providers available (all uninstalled or permanently disabled in settings)")
             sys.exit(1)
+        self.permanently_disabled = permanently_disabled
         self.available_providers = list(available)
         self.providers = list(available)
 

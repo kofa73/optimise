@@ -45,6 +45,19 @@ class TestParseSettings:
         with pytest.raises(FileNotFoundError):
             parse_settings("/nonexistent/path")
 
+    def test_disabled_providers_parses_comma_separated(self, tmp_path):
+        f = tmp_path / "settings.conf"
+        f.write_text("disabled_providers: claude, gemini\n")
+        result = parse_settings(str(f))
+        assert result["disabled_providers"] == ["claude", "gemini"]
+
+    def test_disabled_providers_invalid_names_throws_with_line_number(self, tmp_path):
+        f = tmp_path / "settings.conf"
+        f.write_text("\n\n\ndisabled_providers: fake1, gemini, fake2\n")
+        with pytest.raises(SettingsError) as exc:
+            parse_settings(str(f))
+        assert "Line 4: Unknown provider(s) in disabled_providers: fake1, fake2" in str(exc.value)
+
 
 class TestValidateSettings:
     def _make_valid_settings(self, tmp_path):

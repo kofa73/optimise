@@ -35,13 +35,22 @@ def parse_settings(path):
         raise FileNotFoundError(f"Settings file not found: {path}")
     config = {}
     with open(path) as f:
-        for line in f:
+        for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
             m = re.match(r"(\w[\w-]*):\s*(.*)", line)
             if m:
-                config[m.group(1)] = m.group(2).strip()
+                key = m.group(1)
+                val = m.group(2).strip()
+                if key == "disabled_providers":
+                    providers = [p.strip() for p in val.split(",") if p.strip()]
+                    unknown = [p for p in providers if p not in ("claude", "gemini")]
+                    if unknown:
+                        raise SettingsError(f"Line {line_num}: Unknown provider(s) in disabled_providers: {', '.join(unknown)}")
+                    config[key] = providers
+                else:
+                    config[key] = val
     return config
 
 
@@ -212,6 +221,11 @@ commit_prefix: perf
 # Only commit changed files under these path prefixes (comma-separated).
 # Prevents accidentally committing unrelated WIP changes in the target repo.
 commit_scope: src/
+
+# === AI Providers ===
+# Supported providers: claude, gemini
+# Comma-separated list of providers to permanently disable.
+disabled_providers: 
 """
 
 INSTRUCTIONS_TEMPLATE = """\

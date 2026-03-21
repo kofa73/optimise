@@ -22,3 +22,7 @@ If the testing framework hangs, throws unrelated environment errors, or outright
 - Skipping test verification or moving forward while tests are hanging/failing because of environment setup violates the Red/Green loop.
 - Never "fake" a successful execution loop or assume code changes work correctly without witnessing the actual output of a green test suite.
 - Lying or proceeding under false assumptions risks the entire project integrity. Stop and fix the test environment first.
+
+## 4. Full Suite Verification on Completion
+- Always run the **entire test suite** (`PYTHONPATH=. .venv/bin/pytest tests/`) when you believe an implementation is completely finished. 
+- Do not assume you only need to run the specific test files you modified. Global changes or configuration updates can cause unexpected regressions in other modules.
