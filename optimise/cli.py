@@ -152,7 +152,7 @@ def do_run(directory):
     ai = AIRouter()
 
     # Startup recovery
-    startup = determine_startup_state(directory, target_repo_path)
+    startup = determine_startup_state(directory, target_repo_path, settings)
     log.info(f"Startup state: {startup.value}")
 
     # Read instructions and learnings
@@ -559,3 +559,105 @@ def _do_review(directory, script_git, ai, instructions, target_repo_path):
         log.warning(f"Review failed ({provider})")
 
     script_git.commit_all("updated learnings")
+
+
+def do_command(command, directory, commit=None):
+    """Execute a specific standalone command (build, test, qualitycheck, benchmark)."""
+    directory = os.path.abspath(directory)
+    settings_path = os.path.join(directory, "settings.conf")
+    try:
+        raw = parse_settings(settings_path)
+        settings = validate_settings(raw, script_repo=directory)
+    except (FileNotFoundError, SettingsError) as e:
+        log.error(f"Settings error: {e}")
+        sys.exit(1)
+
+    target_repo_path = settings["target_repo"]
+    target_files = settings["optimisation_target"]
+    if isinstance(target_files, str):
+        target_files = [target_files]
+
+    target_git = GitRepo(target_repo_path)
+    scope = settings.get("commit_scope")
+
+    if commit:
+        if not target_git.commit_exists(commit):
+            log.error(f"Commit {commit} does not exist in the target repository.")
+            sys.exit(1)
+            
+        dirty = target_git.is_dirty(scope)
+        if dirty:
+            log.error(f"Cannot test commit {commit} because the following files in the commit scope are dirty:\n" + 
+                      "\n".join(f"  - {f}" for f in dirty))
+            log.error("Please commit, stash, or revert them before proceeding.")
+            sys.exit(1)
+            
+        log.info(f"Loading files from commit {commit}...")
+        for f in target_files:
+            try:
+                content = target_git.get_file_at_commit(commit, f)
+                with open(os.path.join(target_repo_path, f), "w") as fh:
+                    fh.write(content)
+            except GitError as e:
+                log.error(str(e))
+                sys.exit(1)
+                
+    if command == "build":
+        ok, output = run_shell_step("BUILD", settings["build_cmd"], cwd=target_repo_path)
+        if not ok:
+            log.error("Build failed.")
+            print(output)
+            sys.exit(1)
+        log.info("Build finished successfully.")
+        
+    elif command == "qualitycheck":
+        ok, output = run_shell_step("QUALITY", settings["quality_cmd"], cwd=target_repo_path)
+        print(output)
+        if not ok:
+            log.error("Quality check failed.")
+            sys.exit(1)
+        log.info("Quality check passed.")
+        
+    elif command == "benchmark":
+        try:
+            best = run_benchmark_loop(
+                settings["bench_cmd"], cwd=target_repo_path,
+                baseline_user_sum=float("inf"),
+                num_warmup=settings["num_warmup_iterations"],
+                convergence_threshold_pct=settings["benchmark_convergence_threshold_pct"],
+                convergence_tail_runs=settings["benchmark_convergence_tail_runs"],
+                early_abort_pct=settings["early_abort_pct"],
+            )
+            baseline_sum = float("inf")
+            baseline_path = os.path.join(directory, "perf-logs", "baseline-perf.md")
+            if os.path.exists(baseline_path):
+                with open(baseline_path) as f:
+                    baseline_rows = parse_perf_log(f.read())
+                baseline_sum = sum_user(baseline_rows)
+            
+            result_sum = sum_user(best)
+            
+            if baseline_sum < float("inf"):
+                improvement_pct = (1 - result_sum / baseline_sum) * 100
+                log.info(f"BENCHMARK: {result_sum:.3f}s vs baseline {baseline_sum:.3f}s ({improvement_pct:+.1f}%)")
+            else:
+                log.info(f"BENCHMARK: {result_sum:.3f}s (no baseline found)")
+                
+            print(format_perf_log(best))
+        except BenchmarkError as e:
+            log.error(f"Benchmark failed: {e}")
+            if e.rows:
+                print(format_perf_log(e.rows))
+            sys.exit(1)
+            
+    elif command == "test":
+        log.info("Running quality check...")
+        ok, output = run_shell_step("QUALITY", settings["quality_cmd"], cwd=target_repo_path)
+        print(output)
+        if not ok:
+            log.error("Quality check failed, skipping benchmark.")
+            sys.exit(1)
+            
+        log.info("Quality check passed, starting benchmark...")
+        do_command("benchmark", directory)
+

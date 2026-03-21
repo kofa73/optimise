@@ -49,14 +49,16 @@ class GitRepo:
         # Last resort: current branch
         return self.current_branch()
 
-    def is_dirty(self):
-        """Check for uncommitted changes to tracked files."""
-        result = self._run(["diff", "--quiet", "HEAD"], check=False)
-        if result.returncode != 0:
-            return True
-        # Also check staged changes
-        result = self._run(["diff", "--cached", "--quiet", "HEAD"], check=False)
-        return result.returncode != 0
+    def is_dirty(self, scope=None):
+        """Check for uncommitted changes to tracked files.
+        
+        If scope is provided, only returns changed files that match those prefixes.
+        Returns a list of changed files (evaluating to False if empty, True if not).
+        """
+        files = self.changed_files()
+        if scope:
+            files = [f for f in files if any(f.startswith(s) for s in scope)]
+        return files
 
     def branch_exists(self, name):
         """Check if a local branch exists."""
@@ -75,6 +77,20 @@ class GitRepo:
         """Restore all tracked files to HEAD and remove untracked files."""
         self._run(["checkout", "HEAD", "--", "."])
         self._run(["clean", "-fd"])
+
+    def rollback_scope(self, scope=None):
+        """Restore tracked files in the given scope prefixes to HEAD.
+        
+        If scope is None or empty, does nothing (to avoid wiping everything by accident).
+        Does not run git clean, only checks out tracked files.
+        """
+        if not scope:
+            return
+        
+        # We need to construct the path arguments safely
+        args = ["checkout", "HEAD", "--"]
+        args.extend(scope)
+        self._run(args)
 
     def changed_files(self):
         """Return list of tracked files with changes (staged or unstaged).
@@ -167,3 +183,21 @@ class GitRepo:
                 f"Repository at {self.path} is on branch '{current}', "
                 f"expected '{target_branch}' or '{default}'. Please clean up first."
             )
+
+    def commit_exists(self, commit_hash):
+        """Return True if the specified commit hash exists in the repository."""
+        result = self._run(["cat-file", "-e", f"{commit_hash}^{{commit}}"], check=False)
+        return result.returncode == 0
+
+    def get_file_at_commit(self, commit_hash, file_path):
+        """Return the contents of file_path at the given commit_hash as a string.
+        
+        Raises GitError if the commit or file doesn't exist.
+        """
+        if not self.commit_exists(commit_hash):
+            raise GitError(f"Commit {commit_hash} does not exist in {self.path}")
+        
+        result = self._run(["show", f"{commit_hash}:{file_path}"], check=False)
+        if result.returncode != 0:
+            raise GitError(f"File {file_path} not found at commit {commit_hash} in {self.path}")
+        return result.stdout

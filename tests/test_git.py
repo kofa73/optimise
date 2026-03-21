@@ -26,6 +26,24 @@ class TestGitRepo:
         # Untracked files should NOT count as dirty
         assert not repo.is_dirty()
 
+    def test_is_dirty_with_scope(self, git_repo):
+        (git_repo / "src").mkdir()
+        (git_repo / "tests").mkdir()
+        (git_repo / "src" / "main.c").write_text("v1")
+        (git_repo / "tests" / "test.c").write_text("v1")
+        subprocess.run(["git", "add", "."], cwd=git_repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "v1"], cwd=git_repo, check=True, capture_output=True)
+        
+        (git_repo / "src" / "main.c").write_text("dirty")
+        repo = GitRepo(str(git_repo))
+        
+        dirty_src = repo.is_dirty(scope=["src/"])
+        dirty_tests = repo.is_dirty(scope=["tests/"])
+        
+        assert dirty_src
+        assert "src/main.c" in dirty_src
+        assert not dirty_tests
+
     def test_branch_exists(self, git_repo):
         repo = GitRepo(str(git_repo))
         default = repo.current_branch()
@@ -187,3 +205,54 @@ class TestCommitAll:
     def test_noop_when_nothing_to_commit(self, git_repo):
         repo = GitRepo(str(git_repo))
         repo.commit_all("test: nothing")  # should not raise
+
+
+class TestCommitExists:
+    def test_returns_true_for_head(self, git_repo):
+        repo = GitRepo(str(git_repo))
+        assert repo.commit_exists("HEAD")
+
+    def test_returns_false_for_invalid_commit(self, git_repo):
+        repo = GitRepo(str(git_repo))
+        assert not repo.commit_exists("invalid-hash-123")
+
+
+class TestGetFileAtCommit:
+    def test_returns_file_content(self, git_repo):
+        target = git_repo / "file.txt"
+        target.write_text("v1")
+        subprocess.run(["git", "add", "file.txt"], cwd=git_repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "v1"], cwd=git_repo, check=True, capture_output=True)
+        v1_hash = subprocess.run(["git", "rev-parse", "HEAD"], cwd=git_repo, capture_output=True, text=True).stdout.strip()
+        
+        target.write_text("v2")
+        subprocess.run(["git", "add", "file.txt"], cwd=git_repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "v2"], cwd=git_repo, check=True, capture_output=True)
+        
+        repo = GitRepo(str(git_repo))
+        assert repo.get_file_at_commit(v1_hash, "file.txt") == "v1"
+        assert repo.get_file_at_commit("HEAD", "file.txt") == "v2"
+
+    def test_raises_if_file_not_found_in_commit(self, git_repo):
+        repo = GitRepo(str(git_repo))
+        with pytest.raises(GitError):
+            repo.get_file_at_commit("HEAD", "missing.txt")
+
+
+class TestRollbackScope:
+    def test_rolls_back_only_specified_scope(self, git_repo):
+        (git_repo / "src").mkdir()
+        (git_repo / "tests").mkdir()
+        (git_repo / "src" / "main.c").write_text("v1")
+        (git_repo / "tests" / "test.c").write_text("v1")
+        subprocess.run(["git", "add", "."], cwd=git_repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "v1"], cwd=git_repo, check=True, capture_output=True)
+        
+        (git_repo / "src" / "main.c").write_text("dirty")
+        (git_repo / "tests" / "test.c").write_text("dirty")
+        repo = GitRepo(str(git_repo))
+        
+        repo.rollback_scope(scope=["src/"])
+        assert (git_repo / "src" / "main.c").read_text() == "v1" # Rolled back
+        assert (git_repo / "tests" / "test.c").read_text() == "dirty" # Not rolled back
+

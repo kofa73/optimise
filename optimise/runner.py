@@ -20,7 +20,7 @@ class StartupState(enum.Enum):
     TEST = "test"
 
 
-def determine_startup_state(script_repo, target_repo_path):
+def determine_startup_state(script_repo, target_repo_path, settings=None):
     """Determine what state to resume from on startup.
 
     Implements the recovery-aware startup logic from the spec.
@@ -38,10 +38,12 @@ def determine_startup_state(script_repo, target_repo_path):
             )
             sys.exit(1)
 
+    scope = settings.get("commit_scope") if settings else None
+
     # Check ideas/testing/
     testing_files = list_ideas(script_repo, "testing")
     if testing_files:
-        if target.is_dirty():
+        if target.is_dirty(scope):
             log.info("Resuming: idea in testing/, target dirty → TEST")
             return StartupState.TEST
         else:
@@ -53,18 +55,18 @@ def determine_startup_state(script_repo, target_repo_path):
     # Check ideas/coding/
     coding_files = list_ideas(script_repo, "coding")
     if coding_files:
-        if target.is_dirty():
+        if target.is_dirty(scope):
             log.info("Resuming: idea in coding/, target dirty → rollback, CODE")
-            target.rollback()
+            target.rollback_scope(scope)
         else:
             log.info("Resuming: idea in coding/, target clean → CODE")
         clean_errors(script_repo)
         return StartupState.CODE
 
     # Orphan dirty state
-    if target.is_dirty():
+    if target.is_dirty(scope):
         log.info("Orphan dirty state in target repo — rolling back")
-        target.rollback()
+        target.rollback_scope(scope)
 
     # Check if baseline exists
     perf_dir = os.path.join(script_repo, "perf-logs")

@@ -56,7 +56,7 @@ class TestDetermineStartupState:
         (script_repo / "ideas" / "coding" / "idea.md").write_text("Title\n\nBody")
         # Make target dirty
         (git_repo / ".gitkeep").write_text("dirty")
-        state = determine_startup_state(sr, tr)
+        state = determine_startup_state(sr, tr, {"commit_scope": ["."]})
         assert state == StartupState.CODE
         # Target should be clean now
         assert (git_repo / ".gitkeep").read_text() == ""
@@ -99,7 +99,7 @@ class TestDetermineStartupState:
         sr, tr = self._setup(tmp_path)
         (script_repo / "perf-logs" / "baseline-perf.md").write_text("data")
         (git_repo / ".gitkeep").write_text("dirty")
-        state = determine_startup_state(sr, tr)
+        state = determine_startup_state(sr, tr, {"commit_scope": ["."]})
         assert state == StartupState.GENERATE
         assert (git_repo / ".gitkeep").read_text() == ""
 

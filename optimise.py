@@ -30,6 +30,11 @@ def main():
     run_parser.add_argument("--dir", default=".",
                            help="Script repo directory (default: current)")
 
+    for cmd in ["build", "test", "qualitycheck", "benchmark"]:
+        p = subparsers.add_parser(cmd, help=f"Run {cmd} step")
+        p.add_argument("--dir", default=".", help="Script repo directory (default: current)")
+        p.add_argument("commit", nargs="?", default=None, help="Optional commit ID to test")
+
     args = parser.parse_args()
 
     if args.command == "init":
@@ -40,6 +45,9 @@ def main():
     elif args.command == "run":
         from optimise.cli import do_run
         do_run(args.dir)
+    elif args.command in ["build", "test", "qualitycheck", "benchmark"]:
+        from optimise.cli import do_command
+        do_command(args.command, args.dir, args.commit)
     else:
         parser.print_help()
         sys.exit(1)

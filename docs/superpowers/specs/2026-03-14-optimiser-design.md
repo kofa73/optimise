@@ -59,7 +59,7 @@ optimiser/
 ├── optimise.py              # Entry point (thin: parse args, call cli)
 ├── optimise/
 │   ├── __init__.py
-│   ├── cli.py               # init + run commands
+│   ├── cli.py               # init, run, and standalone commands
 │   ├── settings.py          # Config parsing, validation, defaults
 │   ├── state.py             # Idea lifecycle (create, move, list), file ops
 │   ├── ai.py                # AIRouter — claude/gemini failover
@@ -198,6 +198,21 @@ commit_scope: src/
 5. Does NOT overwrite existing files — if any of the above already exist, they are left untouched and a message is printed.
 
 Running `init` in a directory that is already fully scaffolded is safe (idempotent — it only creates what is missing).
+
+### Standalone Commands
+
+The Optimiser provides standalone commands to run parts of the loop independently without initiating the full AI generation loop. They are executed with `python optimise.py <command> [--dir <script_repo>] [commit_id]`.
+
+- `build`: Runs `build_cmd`.
+- `qualitycheck`: Runs `quality_cmd`.
+- `benchmark`: Runs `bench_cmd` through the full convergence loop and evaluates improvements against the baseline.
+- `test`: Sequentially runs `quality_cmd` followed by `benchmark`.
+
+**Optional `[commit_id]` Parameter:**
+If a commit hash is passed to a standalone command, it safely loads the specific historical versions of `optimisation_target` into the current target repo for testing.
+- It validates the commit exists.
+- It uses the `commit_scope` to ensure no active tracked work is overwritten improperly before checking out the files.
+- You can test WIP changes or historical revisions manually through the standalone pipelines seamlessly.
 
 ### Validation
 
