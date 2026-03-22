@@ -1,0 +1,3 @@
+perf: outer-loop unswitch for zero sharpness to eliminate per-pixel strength multiply
+
+When data->sharpness == 0 (the default and the case for 14 of 19 presets), strength is always exactly 1.0f for every scale (since strength = sharpness * norm + 1.0f). The per-pixel computation `HF[index+c] * strength` in the final integration degenerates to `HF[index+c]`, saving 4 multiplies per pixel per channel. Add an outer-loop unswitching check on `data->sharpness == 0.0f` that selects a pixel body variant where the strength multiply is eliminated. This follows the proven pattern of outer-loop unswitching for simple binary conditions with per-pixel savings, and the condition is evaluated once per heat_PDE_diffusion call (not per pixel), keeping the branch overhead negligible.
