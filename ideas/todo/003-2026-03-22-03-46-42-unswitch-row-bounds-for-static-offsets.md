@@ -1,3 +1,0 @@
-perf: Unswitch row bounds to provide compiler with static memory offsets between rows
-
-Currently, the `i_neighbours` array is computed using `MAX` and `MIN` to clamp row boundaries. This dynamic clamping prevents the compiler from proving that the three memory rows are separated by a constant stride, forcing it to maintain three independent base pointers. By unswitching the vertical `i` bounds check (`i >= step && i < height - step`) outside the peeled column loop, we can use exact algebraic offsets (`i - step`, `i`, `i + step`) for the safe center rows. This enables the compiler to optimize the inner loop's memory fetches using constant-offset scaled addressing.
