@@ -99,14 +99,14 @@ class TestGetVersion:
     @patch("subprocess.run")
     def test_get_version_claude(self, mock_run):
         mock_run.return_value = MagicMock(
-            stdout="2.1.76 (Claude Code)\n", returncode=0)
-        assert get_version("claude") == "2.1.76"
+            stdout="2.1.81 (Claude Code)\n", returncode=0)
+        assert get_version("claude") == "2.1.81"
 
     @patch("subprocess.run")
     def test_get_version_gemini(self, mock_run):
         mock_run.return_value = MagicMock(
-            stdout="0.33.1\n", returncode=0)
-        assert get_version("gemini") == "0.33.1"
+            stdout="0.34.0\n", returncode=0)
+        assert get_version("gemini") == "0.34.0"
 
     @patch("subprocess.run")
     def test_get_version_returns_none_on_failure(self, mock_run):

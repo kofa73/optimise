@@ -26,7 +26,7 @@ PROVIDERS = {
         "uses_stdin": True,
         "version_cmd": ["claude", "--version"],
         "version_parse": lambda s: s.split()[0],  # "2.1.76 (Claude Code)" -> "2.1.76"
-        "built_with": "2.1.76",
+        "built_with": "2.1.81",
     },
     "gemini": {
         "cmd_text": lambda model: [
@@ -42,7 +42,7 @@ PROVIDERS = {
         "uses_stdin": True,
         "version_cmd": ["gemini", "--version"],
         "version_parse": lambda s: s.strip(),  # "0.33.1" -> "0.33.1"
-        "built_with": "0.33.1",
+        "built_with": "0.34.0",
     },
 }
 
