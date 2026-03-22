@@ -1,0 +1,3 @@
+perf: free HF[s] buffers immediately after each scale's reconstruction to reduce peak memory and TLB pressure
+
+Currently all HF[0..scales-1] buffers are allocated before processing and freed together afterward. During reconstruction (which processes scales from coarsest to finest), each HF[s] is used exactly once and never accessed again. By calling dt_free_align(HF[s]) immediately after scale s is reconstructed (and setting HF[s] = NULL), peak memory drops by approximately (scales-1) * width * height * 16 bytes. For a 10-scale 24MP image, this frees up to ~3.5GB earlier, reducing TLB pressure and virtual memory overhead. The change is trivial (one free call per scale in the reconstruction loop) and carries zero computational risk.
