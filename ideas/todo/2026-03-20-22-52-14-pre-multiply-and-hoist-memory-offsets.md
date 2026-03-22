@@ -1,3 +1,0 @@
-perf: Pre-multiply and hoist row/column memory offsets to reduce inner-loop ALU
-
-Extract the multiplication by 4 out of the 9 neighbor index calculations in the innermost pixel loops. Pre-multiply the `i_neighbours` array by 4 outside the column loop, and multiply the `j_neighbours` by 4 once inside the loop. Then calculate `n0` through `n8` using simple scalar additions. This replaces 9 independent integer index multiplications per pixel with pre-computed offset additions, reducing ALU instruction pressure in the address generation logic.
