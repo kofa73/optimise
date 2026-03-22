@@ -1,7 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(find /workspace/optimiser/docs -type f -name *.md)",
+      "Bash(wc -l /workspace/optimiser/tests/*.py /workspace/optimiser/optimise/*.py)",
+      "Bash(grep -n \"timeout\" /workspace/optimiser/optimise/*.py)",
+      "Bash(python -m pytest tests/test_settings.py::TestValidateSettings::test_llm_timeout_parsed_as_int tests/test_settings.py::TestValidateSettings::test_llm_timeout_defaults_to_600 tests/test_settings.py::TestValidateSettings::test_llm_timeout_invalid_raises tests/test_settings.py::TestValidateSettings::test_llm_timeout_in_template -v)",
+      "Bash(python3 -m pytest tests/test_settings.py::TestValidateSettings::test_llm_timeout_parsed_as_int tests/test_settings.py::TestValidateSettings::test_llm_timeout_defaults_to_600 tests/test_settings.py::TestValidateSettings::test_llm_timeout_invalid_raises tests/test_settings.py::TestValidateSettings::test_llm_timeout_in_template -v)",
+      "Bash(python3 -m pytest tests/test_settings.py -v)",
+      "Bash(python3 -m pytest tests/test_cli.py::TestGenerateIdeas::test_llm_timeout_passed_to_ai_call tests/test_cli.py::TestDoReview::test_llm_timeout_passed_to_ai_call -v)",
+      "Bash(python3 -m pytest tests/test_cli.py tests/test_settings.py -v)",
+      "Bash(python3 -m pytest -v)",
+      "Bash(claude:*)",
+      "Bash(gemini:*)",
+      "Bash(python3 -m pytest tests/test_ai.py -v)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
