@@ -184,3 +184,25 @@ class TestValidateSettings:
         del settings["early_abort_pct"]
         result = validate_settings(settings, script_repo=str(tmp_path))
         assert result["early_abort_pct"] == result["min_improvement_pct"]
+
+    def test_llm_timeout_parsed_as_int(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["llm_timeout"] = "300"
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["llm_timeout"] == 300
+
+    def test_llm_timeout_defaults_to_600(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        # Don't set llm_timeout — should default to 600
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["llm_timeout"] == 600
+
+    def test_llm_timeout_invalid_raises(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["llm_timeout"] = "not_a_number"
+        with pytest.raises(SettingsError, match="llm_timeout"):
+            validate_settings(settings, script_repo=str(tmp_path))
+
+    def test_llm_timeout_in_template(self):
+        from optimise.settings import SETTINGS_TEMPLATE
+        assert "llm_timeout: 600" in SETTINGS_TEMPLATE

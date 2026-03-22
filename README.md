@@ -44,6 +44,7 @@ Edit `settings.conf` to configure the required paths and commands:
 - `build_cmd`, `bench_cmd`, `quality_cmd`: Shell commands to build, benchmark, and run test suites.
 - `commit_scope`: The directory scope for dirty file checks and rollbacks (e.g., `src/`).
 - `disabled_providers`: (Optional) A comma-separated list of AI providers to permanently disable (e.g., `claude` or `gemini`). Providers missing required system binaries are also permanently disabled automatically.
+- `llm_timeout`: (Optional) Maximum time in seconds to wait for an LLM response before timing out. Defaults to `600`.
 
 Next, document the specific optimization goals for the LLM in `instructions.md`.
 

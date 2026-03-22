@@ -208,7 +208,7 @@ class TestGenerateIdeas:
              0, "test-provider"),
         ])
         result = _generate_ideas(
-            directory=script_repo, settings={"idea_generation_batch_size": 1},
+            directory=script_repo, settings={"idea_generation_batch_size": 1, "llm_timeout": 600},
             ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
         )
         assert result == GenerationResult.OK
@@ -222,7 +222,7 @@ class TestGenerateIdeas:
             ("", 1, "test-provider"),
         ])
         result = _generate_ideas(
-            directory=script_repo, settings={"idea_generation_batch_size": 1},
+            directory=script_repo, settings={"idea_generation_batch_size": 1, "llm_timeout": 600},
             ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
         )
         assert result == GenerationResult.LLM_FAILURE
@@ -232,11 +232,26 @@ class TestGenerateIdeas:
         script_repo = self._setup(tmp_path)
         ai = self._make_ai([])  # should not be called
         result = _generate_ideas(
-            directory=script_repo, settings={"idea_generation_batch_size": 0},
+            directory=script_repo, settings={"idea_generation_batch_size": 0, "llm_timeout": 600},
             ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
         )
         assert result == GenerationResult.OK
         assert ai.call.call_count == 0
+
+    def test_llm_timeout_passed_to_ai_call(self, tmp_path):
+        """ai.call() receives timeout from settings."""
+        script_repo = self._setup(tmp_path)
+        ai = self._make_ai([
+            ("---\nFILENAME: idea-a\nTITLE: Unroll inner loop\nDESCRIPTION:\nUnroll.\n---\n",
+             0, "test-provider"),
+        ])
+        _generate_ideas(
+            directory=script_repo, settings={"idea_generation_batch_size": 1, "llm_timeout": 120},
+            ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
+        )
+        ai.call.assert_called_once()
+        _, kwargs = ai.call.call_args
+        assert kwargs["timeout"] == 120
 
     def test_unparseable_output_returns_llm_failure(self, tmp_path):
         """LLM returns gibberish → LLM_FAILURE."""
@@ -245,7 +260,7 @@ class TestGenerateIdeas:
             ("here is some random text with no structure", 0, "test-provider"),
         ])
         result = _generate_ideas(
-            directory=script_repo, settings={"idea_generation_batch_size": 1},
+            directory=script_repo, settings={"idea_generation_batch_size": 1, "llm_timeout": 600},
             ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
         )
         assert result == GenerationResult.LLM_FAILURE
@@ -259,7 +274,7 @@ class TestGenerateIdeas:
              0, "test-provider"),
         ])
         result = _generate_ideas(
-            directory=script_repo, settings={"idea_generation_batch_size": 2},
+            directory=script_repo, settings={"idea_generation_batch_size": 2, "llm_timeout": 600},
             ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
         )
         assert result == GenerationResult.OK
@@ -269,6 +284,31 @@ class TestGenerateIdeas:
         # First idea (best) gets 001-, second gets 002-
         assert ideas[0].startswith("001-"), f"Expected 001- prefix, got: {ideas[0]}"
         assert ideas[1].startswith("002-"), f"Expected 002- prefix, got: {ideas[1]}"
+
+
+class TestDoReview:
+    def test_llm_timeout_passed_to_ai_call(self, tmp_path):
+        """_do_review passes timeout from settings to ai.call()."""
+        from optimise.cli import _do_review
+        script = tmp_path / "script"
+        script.mkdir()
+        _init_git(script)
+        for d in ["ideas/todo", "ideas/coding", "ideas/testing", "ideas/done"]:
+            (script / d).mkdir(parents=True)
+        (script / "learnings.md").write_text("## What works\n")
+        (script / "instructions.md").write_text("Optimise.\n")
+        # Place a done idea so _do_review has something to review
+        (script / "ideas" / "done" / "idea.md").write_text("Title\n\nBody")
+        script_git = GitRepo(str(script))
+
+        ai = MagicMock()
+        ai.call = MagicMock(return_value=("review output", 0, "test-provider"))
+
+        _do_review(str(script), script_git, ai, "Optimise.", str(tmp_path),
+                   settings={"llm_timeout": 90})
+        ai.call.assert_called_once()
+        _, kwargs = ai.call.call_args
+        assert kwargs["timeout"] == 90
 
 
 class TestSucceedIdea:

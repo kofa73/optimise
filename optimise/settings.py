@@ -21,7 +21,7 @@ _FLOAT_KEYS = [
 _INT_KEYS = [
     "num_warmup_iterations", "benchmark_convergence_tail_runs",
     "max_retries", "max_iterations", "max_consecutive_perf_failures",
-    "max_runtime_minutes", "idea_generation_batch_size",
+    "max_runtime_minutes", "idea_generation_batch_size", "llm_timeout",
 ]
 
 
@@ -136,6 +136,10 @@ def validate_settings(raw, script_repo):
     if "early_abort_pct" not in result:
         result["early_abort_pct"] = result.get("min_improvement_pct", 0.5)
 
+    # Default llm_timeout
+    if "llm_timeout" not in result:
+        result["llm_timeout"] = 600
+
     return result
 
 
@@ -225,7 +229,10 @@ commit_scope: src/
 # === AI Providers ===
 # Supported providers: claude, gemini
 # Comma-separated list of providers to permanently disable.
-disabled_providers: 
+disabled_providers:
+
+# Maximum time (seconds) to wait for an LLM response before timing out.
+llm_timeout: 600
 """
 
 INSTRUCTIONS_TEMPLATE = """\

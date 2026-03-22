@@ -189,7 +189,10 @@ commit_scope: src/
 # === AI Providers ===
 # Supported providers: claude, gemini
 # Comma-separated list of providers to permanently disable.
-disabled_providers: 
+disabled_providers:
+
+# Maximum time (seconds) to wait for an LLM response before timing out.
+llm_timeout: 600
 ```
 
 ### The `init` Command
