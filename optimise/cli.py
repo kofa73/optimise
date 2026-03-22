@@ -104,7 +104,7 @@ def _generate_ideas(directory, settings, ai, target_repo_path, instructions, tar
     )
     output, rc, provider = ai.call(
         prompt, tier="best", cwd=target_repo_path,
-        timeout=settings["llm_timeout"],
+        timeout=settings["llm_timeout"], purpose="generating ideas",
     )
     if rc != 0:
         log.warning(f"Idea generation failed ({provider})")
@@ -217,6 +217,7 @@ def do_run(directory):
             continue
 
         if state == StartupState.GENERATE:
+            log.info("--- Starting idea generation ---")
             todo_files = list_ideas(directory, "todo")
             if not todo_files:
                 if list_ideas(directory, "done"):
@@ -270,6 +271,7 @@ def do_run(directory):
             continue
 
         if state == StartupState.CODE:
+            log.info("--- Starting coding ---")
             iteration += 1
             coding_files = list_ideas(directory, "coding")
             idea_file = coding_files[0]
@@ -291,7 +293,7 @@ def do_run(directory):
             log.info(f"[CODE] Implementing idea: {idea_title[:80]}")
             output, rc, provider = ai.call(
                 prompt, tier="best", cwd=target_repo_path, allow_edits=True,
-                timeout=settings["llm_timeout"],
+                timeout=settings["llm_timeout"], purpose="implementing idea",
             )
 
             if rc != 0:
@@ -345,6 +347,7 @@ def do_run(directory):
             continue
 
         if state == StartupState.TEST:
+            log.info("--- Starting testing ---")
             coding_or_testing = "testing"
             files = list_ideas(directory, coding_or_testing)
             idea_file = files[0]
@@ -554,7 +557,7 @@ def _do_review(directory, script_git, ai, instructions, target_repo_path,
     prompt = build_review_prompt(instructions, done_ideas)
     output, rc, provider = ai.call(
         prompt, tier="best", cwd=directory, allow_edits=True,
-        timeout=timeout,
+        timeout=timeout, purpose="reviewing learnings",
     )
     if rc == 0:
         log.info(f"Review completed ({provider})")

@@ -93,6 +93,7 @@ class AIRouter:
         self.permanently_disabled = permanently_disabled
         self.available_providers = list(available)
         self.providers = list(available)
+        self._last_call_finish_time = {name: 0 for name in available}
 
     def _check_version(self, name):
         """Compare installed version against built_with and warn on mismatch."""
@@ -121,7 +122,7 @@ class AIRouter:
         return len(self.providers) > 0
 
     def call(self, prompt, tier="best", timeout=600, allow_edits=False,
-             cwd=None, provider_override=None):
+             cwd=None, provider_override=None, purpose=None):
         """Call an AI provider. Retries indefinitely with wait on full exhaustion.
 
         Returns (stdout, exit_code, provider_name).
@@ -137,8 +138,16 @@ class AIRouter:
                 self.reset_providers()
                 continue
 
+            elapsed = time.time() - self._last_call_finish_time.get(provider_name, 0)
+            if elapsed < 60:
+                delay = random.uniform(30, 120)
+                log.info(f"Cooling off {delay:.0f}s before calling {provider_name} "
+                         f"(last call finished {elapsed:.0f}s ago)")
+                time.sleep(delay)
+
             stdout, rc = self._invoke(provider_name, prompt, tier, timeout,
-                                      allow_edits, cwd)
+                                      allow_edits, cwd, purpose)
+            self._last_call_finish_time[provider_name] = time.time()
 
             if rc == 0:
                 return stdout, rc, provider_name
@@ -156,7 +165,8 @@ class AIRouter:
                 log.warning(f"Override provider {provider_name} failed. Waiting...")
                 time.sleep(300)
 
-    def _invoke(self, provider_name, prompt, tier, timeout, allow_edits, cwd):
+    def _invoke(self, provider_name, prompt, tier, timeout, allow_edits, cwd,
+                purpose=None):
         spec = PROVIDERS[provider_name]
         model = spec["models"][tier]
 
@@ -169,7 +179,8 @@ class AIRouter:
         for var in spec["env_cleanup"]:
             env.pop(var, None)
 
-        log.info(f"AI: calling {provider_name}/{model} (edits={allow_edits})")
+        label = f" for {purpose}" if purpose else ""
+        log.info(f"AI: calling {provider_name}/{model}{label} (edits={allow_edits})")
 
         try:
             kwargs = dict(

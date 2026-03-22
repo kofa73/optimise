@@ -253,6 +253,21 @@ class TestGenerateIdeas:
         _, kwargs = ai.call.call_args
         assert kwargs["timeout"] == 120
 
+    def test_purpose_passed_to_ai_call(self, tmp_path):
+        """ai.call() receives purpose='generating ideas'."""
+        script_repo = self._setup(tmp_path)
+        ai = self._make_ai([
+            ("---\nFILENAME: idea-a\nTITLE: Unroll inner loop\nDESCRIPTION:\nUnroll.\n---\n",
+             0, "test-provider"),
+        ])
+        _generate_ideas(
+            directory=script_repo, settings={"idea_generation_batch_size": 1, "llm_timeout": 600},
+            ai=ai, target_repo_path="/tmp", instructions="test", target_files="code",
+        )
+        ai.call.assert_called_once()
+        _, kwargs = ai.call.call_args
+        assert kwargs["purpose"] == "generating ideas"
+
     def test_unparseable_output_returns_llm_failure(self, tmp_path):
         """LLM returns gibberish → LLM_FAILURE."""
         script_repo = self._setup(tmp_path)
@@ -309,6 +324,28 @@ class TestDoReview:
         ai.call.assert_called_once()
         _, kwargs = ai.call.call_args
         assert kwargs["timeout"] == 90
+
+    def test_purpose_passed_to_ai_call(self, tmp_path):
+        """_do_review passes purpose='reviewing learnings' to ai.call()."""
+        from optimise.cli import _do_review
+        script = tmp_path / "script"
+        script.mkdir()
+        _init_git(script)
+        for d in ["ideas/todo", "ideas/coding", "ideas/testing", "ideas/done"]:
+            (script / d).mkdir(parents=True)
+        (script / "learnings.md").write_text("## What works\n")
+        (script / "instructions.md").write_text("Optimise.\n")
+        (script / "ideas" / "done" / "idea.md").write_text("Title\n\nBody")
+        script_git = GitRepo(str(script))
+
+        ai = MagicMock()
+        ai.call = MagicMock(return_value=("review output", 0, "test-provider"))
+
+        _do_review(str(script), script_git, ai, "Optimise.", str(tmp_path),
+                   settings={"llm_timeout": 90})
+        ai.call.assert_called_once()
+        _, kwargs = ai.call.call_args
+        assert kwargs["purpose"] == "reviewing learnings"
 
 
 class TestSucceedIdea:

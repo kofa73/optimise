@@ -232,3 +232,102 @@ class TestAIRouter:
             stdout, rc, provider = router.call("test", allow_edits=False)
         assert stdout == "ok"
         assert rc == 0
+
+
+class TestCallPurpose:
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    @patch("subprocess.run")
+    def test_purpose_appears_in_log(self, mock_run, mock_which, caplog):
+        mock_run.return_value = MagicMock(stdout="ok", returncode=0)
+        router = AIRouter(providers=["claude"])
+        import logging
+        with caplog.at_level(logging.INFO):
+            router.call("test", allow_edits=False, purpose="generating ideas")
+        assert any("generating ideas" in r.message for r in caplog.records)
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    @patch("subprocess.run")
+    def test_no_purpose_omits_label(self, mock_run, mock_which, caplog):
+        mock_run.return_value = MagicMock(stdout="ok", returncode=0)
+        router = AIRouter(providers=["claude"])
+        import logging
+        with caplog.at_level(logging.INFO):
+            router.call("test", allow_edits=False)
+        ai_log = [r for r in caplog.records if r.message.startswith("AI:")]
+        assert ai_log
+        assert "None" not in ai_log[0].message
+
+
+class TestRateLimiting:
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    def test_last_call_finish_time_initialized_to_zero(self, mock_which):
+        router = AIRouter(providers=["claude"])
+        assert router._last_call_finish_time["claude"] == 0
+
+    @patch("shutil.which", return_value="/usr/bin/fake")
+    def test_last_call_finish_time_initialized_for_all_providers(self, mock_which):
+        router = AIRouter(providers=["claude", "gemini"])
+        assert "claude" in router._last_call_finish_time
+        assert "gemini" in router._last_call_finish_time
+        assert all(t == 0 for t in router._last_call_finish_time.values())
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    @patch("subprocess.run")
+    def test_no_delay_on_first_call(self, mock_run, mock_which):
+        mock_run.return_value = MagicMock(stdout="ok", returncode=0)
+        router = AIRouter(providers=["claude"])
+        with patch("time.sleep") as mock_sleep:
+            router.call("test", allow_edits=False)
+        mock_sleep.assert_not_called()
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    @patch("subprocess.run")
+    def test_delay_when_last_call_recent(self, mock_run, mock_which):
+        """If last call was <60s ago, should sleep 30-120s."""
+        mock_run.return_value = MagicMock(stdout="ok", returncode=0)
+        router = AIRouter(providers=["claude"])
+        now = 1000.0
+        router._last_call_finish_time["claude"] = now - 30  # 30s ago
+        with patch("time.time", return_value=now), \
+             patch("time.sleep") as mock_sleep, \
+             patch("random.uniform", return_value=75.0) as mock_rand:
+            router.call("test", allow_edits=False, provider_override="claude")
+            mock_rand.assert_called_once_with(30, 120)
+            mock_sleep.assert_called_once_with(75.0)
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    @patch("subprocess.run")
+    def test_no_delay_when_last_call_old(self, mock_run, mock_which):
+        """If last call was >=60s ago, no delay."""
+        mock_run.return_value = MagicMock(stdout="ok", returncode=0)
+        router = AIRouter(providers=["claude"])
+        now = 1000.0
+        router._last_call_finish_time["claude"] = now - 120  # 120s ago
+        with patch("time.time", return_value=now), \
+             patch("time.sleep") as mock_sleep:
+            router.call("test", allow_edits=False, provider_override="claude")
+        mock_sleep.assert_not_called()
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    @patch("subprocess.run")
+    def test_last_call_finish_time_updated_after_call(self, mock_run, mock_which):
+        mock_run.return_value = MagicMock(stdout="ok", returncode=0)
+        router = AIRouter(providers=["claude"])
+        with patch("time.time", return_value=5000.0):
+            router.call("test", allow_edits=False, provider_override="claude")
+        assert router._last_call_finish_time["claude"] == 5000.0
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    @patch("subprocess.run")
+    def test_delay_logs_message(self, mock_run, mock_which, caplog):
+        mock_run.return_value = MagicMock(stdout="ok", returncode=0)
+        router = AIRouter(providers=["claude"])
+        now = 1000.0
+        router._last_call_finish_time["claude"] = now - 10
+        import logging
+        with patch("time.time", return_value=now), \
+             patch("time.sleep"), \
+             patch("random.uniform", return_value=60.0), \
+             caplog.at_level(logging.INFO):
+            router.call("test", allow_edits=False, provider_override="claude")
+        assert any("cooling off" in r.message.lower() for r in caplog.records)

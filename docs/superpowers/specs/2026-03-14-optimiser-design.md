@@ -438,6 +438,10 @@ Providers (e.g., `gemini`, `claude`) are permanently disabled on initialization 
 
 For runtime API or network failures, random provider selection is attempted per call. On consecutive failure, the system falls back to the remaining available providers. If all available providers exhaust their attempt limits for a specific call, the router sleeps for a fixed duration (e.g., 5 minutes). Following sleep, temporary availability blocks are reset and retries continue. This waiting loop runs indefinitely (incurring zero cost) and safely yields to interruption (Ctrl+C). Providers reset temporary failure states at the start of each main loop iteration.
 
+### Rate Limiting
+
+To avoid hammering providers with calls in rapid succession, the router tracks the finish time of each provider's last call. If less than 60 seconds have elapsed since the previous call to the same provider, a random delay of 30–120 seconds is inserted before the next call. The first call to any provider never waits (initial timestamp is epoch zero).
+
 ### Roles
 
 All roles use the "best" tier (opus for claude, pro for gemini).
