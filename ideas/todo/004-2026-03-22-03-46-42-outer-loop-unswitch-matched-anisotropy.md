@@ -1,0 +1,3 @@
+perf: Outer-loop unswitch matched LF/HF anisotropy to safely skip dt_vector_exp
+
+While attempting to skip redundant `dt_vector_exp` calls for matched LF/HF anisotropy *inside* the pixel loop caused a catastrophic regression due to branching dependencies, evaluating this match as an outer-loop condition (`anisotropy[0] == anisotropy[2]`) allows us to safely bypass up to two expensive vector `expf` computations per pixel without SIMD breakage. Since the default presets frequently use identical anisotropies for low and high frequencies, unswitching this path offers a massive reduction in ALU load for the most common use cases.
