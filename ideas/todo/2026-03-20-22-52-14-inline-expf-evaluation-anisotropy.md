@@ -1,3 +1,0 @@
-perf: Inline expf evaluation for anisotropy tensors to eliminate loops
-
-Move the `expf` calculation for the `c2` tensors directly into the first channel loop where `magnitude_grad` and `magnitude_lapl` are computed, rather than storing intermediate negated values and running a separate `dt_vector_exp` iteration later. Since the `c2` values are conditionally evaluated based on isotropy, conditionally applying `expf(-magnitude * anisotropy)` inline eliminates 4 small secondary vector loops and avoids transient intermediate array stack writes.
