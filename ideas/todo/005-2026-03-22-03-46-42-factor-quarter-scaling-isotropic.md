@@ -1,3 +1,0 @@
-perf: Factor out quarter-scaling in isotropic accumulation to save inner-loop multiplications
-
-Previous attempts to pre-multiply isotropic constants by `abcd` regressed due to increased register pressure from passing multiple dynamic parameters to the accumulation function. Instead, algebraically rewriting the isotropic kernel accumulation from `abcd * (0.25f * corners + 0.5f * cross - 3.f * center)` to `(abcd * 0.25f) * (corners + 2.f * cross - 12.f * center)` eliminates one floating-point multiplication per channel per order. By passing a single `abcd_quarter` parameter and using hardcoded `2.f` and `12.f` constants (which map perfectly to fast fused-multiply-add instructions), this structurally reduces the ALU cost without register spilling.
