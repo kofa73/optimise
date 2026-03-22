@@ -1,3 +1,0 @@
-perf: replace i_neighbours[3] array with 3 named scalar variables for row offsets
-
-The `i_neighbours[3]` array stores the three row offset products (above, center, below) and is accessed 9 times within the pixel body to compute neighbor addresses. Replace it with three named scalar variables `row_above`, `row_center`, `row_below`. While the compiler may already map a 3-element array to registers, the explicit scalar declaration follows the proven "intermediate stack arrays → native scalar variables" optimization pattern that has consistently yielded improvements (~6-12% in prior experiments). Named scalars give the compiler clearer aliasing guarantees and eliminate any array-indexing overhead, which matters given this code is inside the hottest loop of the module.
