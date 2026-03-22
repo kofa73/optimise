@@ -1,3 +1,0 @@
-perf: Reuse local center pixel arrays in final integration loop
-
-The final solution update loop currently fetches `HF[index + c]` and `LF[index + c]` directly from global memory pointers. However, these exact memory addresses were already read and stored into the `HF_center` and `LF_center` aligned stack arrays during the initial neighbor extraction pass. By substituting the global memory fetches with the existing local `HF_center[c]` and `LF_center[c]` arrays, we eliminate redundant global L1 cache loads and force the compiler to reuse active vector registers populated earlier in the loop.
