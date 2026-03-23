@@ -1,0 +1,3 @@
+perf: eliminate result array in PDE output by computing final value directly into acc
+
+In the DIFFUSE_PIXEL_BODY macro's output section, the code computes `acc[c] = HF * strength + acc[c] / variance[c]` then `result[c] = fmaxf(acc[c] + LF, 0.f)` into a separate dt_aligned_pixel_t result, then nontemporal-stores result. Eliminate the `result` array by computing the final clamped value directly back into `acc[c] = fmaxf(acc[c] + LF[index + c], 0.f)` and passing acc to copy_pixel_nontemporal. This removes one dt_aligned_pixel_t (16 bytes) from the stack in the hottest loop body, reducing register pressure. While small individually, this follows the proven stack-array-elimination pattern and its effect compounds with other register-pressure reductions in the same loop body.
