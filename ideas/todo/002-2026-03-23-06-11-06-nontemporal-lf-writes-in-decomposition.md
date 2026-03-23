@@ -1,3 +1,0 @@
-perf: use nontemporal stores for LF writes during B-spline decomposition
-
-In `decompose_2D_Bspline_diffuse`, `LF` (blur) is currently written using normal stores because it is reused as input for the next scale. However, because `LF` is a full-image buffer (often ~96MB for a 24MP image), the first pixels written will have long been evicted from the L3 cache by the time the next scale pass begins reading them. Replacing the normal stores with `copy_pixel_nontemporal(LF + index, blur)` prevents the CPU from performing unnecessary read-for-ownership cache line fetches, directly reducing memory bandwidth just like the existing nontemporal optimization for `HF` buffers.
