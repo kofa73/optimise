@@ -1,0 +1,42 @@
+perf: Directly inline isotropic convolutions to bypass function overhead
+
+When the macro flags `GRAD_ISOTROPIC` or `LAPL_ISOTROPIC` are true, the pixel solver currently still initializes zeroed dummy arrays and calls the generalized `accumulate_convolution_direct` function, which internally hits a runtime switch statement. By directly inlining the simple isotropic accumulation math into a compile-time `if (GRAD_ISOTROPIC)` branch inside the macro, we completely eliminate the function call boundary, dummy array instantiation, and switch branching for isotropic passes.
+
+outcome: improvement
+commit: c7c959334d
+Reduced sum(user) from 188.886s to 186.625s (~1.2% improvement)
+
+# Individual timings
+| user | cpu |
+| ---- | ---- |
+| 5.727 | 61.097 |
+| 10.392 | 116.981 |
+| 9.094 | 99.960 |
+| 9.972 | 110.590 |
+| 10.056 | 110.440 |
+| 10.279 | 116.737 |
+| 9.897 | 112.937 |
+| 10.078 | 115.695 |
+| 9.873 | 110.906 |
+| 10.037 | 113.130 |
+| 9.795 | 111.143 |
+| 9.342 | 105.441 |
+| 6.615 | 70.381 |
+| 9.704 | 107.071 |
+| 9.853 | 109.434 |
+| 6.686 | 73.943 |
+| 6.669 | 74.381 |
+| 6.654 | 70.961 |
+| 8.076 | 91.543 |
+| 9.400 | 107.079 |
+| 8.426 | 94.084 |
+
+# Totals
+| user | cpu |
+| ---- | ---- |
+| 186.625 | 2083.934 |
+
+# Averages
+| user | cpu |
+| ---- | ---- |
+| 8.887 | 99.235 |
