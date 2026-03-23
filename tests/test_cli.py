@@ -2,11 +2,13 @@
 import os
 import subprocess
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from optimise.cli import (
     do_init, _BuildState, _succeed_idea, _fail_idea,
     _generate_ideas, GenerationResult, _do_build_test_benchmark,
+    do_run,
 )
+from optimise.runner import StartupState
 from optimise.git import GitRepo
 from optimise.benchmark import format_perf_log
 
@@ -665,5 +667,101 @@ class TestDoCommand:
         
         assert len(calls) == 2
         assert len(bench_calls) == 1
+
+
+class TestCodingFailureRevertsScope:
+    """When AI fails during coding, partial edits in commit_scope must be reverted."""
+
+    def _setup_repos(self, tmp_path):
+        """Create target + script repos ready for the CODE state."""
+        target = tmp_path / "target"
+        target.mkdir()
+        _init_git(target)
+        (target / "src").mkdir()
+        (target / "src" / "main.c").write_text("original")
+        subprocess.run(["git", "add", "."], cwd=target, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init src"], cwd=target,
+                        check=True, capture_output=True)
+
+        script = tmp_path / "script"
+        script.mkdir()
+        _init_git(script)
+        for d in ["ideas/todo", "ideas/coding", "ideas/testing",
+                   "ideas/done", "perf-logs"]:
+            (script / d).mkdir(parents=True, exist_ok=True)
+        (script / "ideas" / "coding" / "001-test-idea.md").write_text(
+            "Test Idea\n\nModify src/main.c"
+        )
+        (script / "perf-logs" / "current-best-perf.md").write_text(
+            format_perf_log([{"user": 10.0, "cpu": 100.0}])
+        )
+        (script / "instructions.md").write_text("test instructions")
+        (script / "learnings.md").write_text(
+            "## What works\n\n## What to avoid\n"
+        )
+        subprocess.run(["git", "add", "."], cwd=script, check=True,
+                        capture_output=True)
+        subprocess.run(["git", "commit", "-m", "setup"], cwd=script,
+                        check=True, capture_output=True)
+
+        branch = subprocess.run(
+            ["git", "branch", "--show-current"], cwd=target,
+            capture_output=True, text=True,
+        ).stdout.strip()
+
+        (script / "settings.conf").write_text(
+            f"target_repo: {target}\n"
+            f"branch: {branch}\n"
+            f"optimisation_target: src/main.c\n"
+            f"instructions: instructions.md\n"
+            f"build_cmd: true\n"
+            f"bench_cmd: echo 'user 10.0 cpu 100.0'\n"
+            f"max_retries: 2\n"
+            f"max_iterations: 1\n"
+            f"max_consecutive_perf_failures: 5\n"
+            f"max_runtime_minutes: 60\n"
+            f"min_improvement_pct: 0.5\n"
+            f"individual_regression_tradeoff: 2\n"
+            f"num_warmup_iterations: 0\n"
+            f"benchmark_convergence_threshold_pct: 1\n"
+            f"benchmark_convergence_tail_runs: 3\n"
+            f"commit_scope: src/\n"
+            f"idea_generation_batch_size: 5\n"
+            f"llm_timeout: 60\n"
+        )
+
+        return target, script
+
+    def test_reverts_scope_before_retry(self, tmp_path):
+        """Partial edits from a failed coding attempt must be reverted
+        before the next retry, so the LLM starts from clean state."""
+        target, script = self._setup_repos(tmp_path)
+
+        file_states_at_call = []
+
+        def ai_call_side_effect(prompt, **kwargs):
+            # Record state of file when AI is invoked
+            file_states_at_call.append(
+                (target / "src" / "main.c").read_text()
+            )
+            # Simulate a half-finished edit left by the provider
+            (target / "src" / "main.c").write_text("partial edit")
+            return ("", 1, "test-provider")
+
+        mock_ai = MagicMock()
+        mock_ai.call.side_effect = ai_call_side_effect
+
+        with patch("optimise.cli.AIRouter", return_value=mock_ai), \
+             patch("optimise.cli.determine_startup_state",
+                   return_value=StartupState.CODE), \
+             patch("optimise.cli._do_review"), \
+             patch("optimise.cli._generate_ideas",
+                   return_value=GenerationResult.OK):
+            do_run(str(script))
+
+        # AI called twice (max_retries = 2)
+        assert len(file_states_at_call) == 2
+        # On the second attempt the file must be clean, not the partial edit
+        assert file_states_at_call[1] == "original"
 
 

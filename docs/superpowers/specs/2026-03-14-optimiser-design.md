@@ -530,6 +530,9 @@ CODE
   script builds prompt: instructions + learnings + idea content
   if errors.txt exists: append to prompt with fix instructions
   LLM gets Read + Edit tools for target repo
+  if LLM fails (rc != 0) → rollback commit_scope, then:
+    retries remaining? → CODE
+    retries exhausted → FAIL_IDEA (outcome: "AI implementation failed")
   if LLM responds NOT_APPLICABLE → FAIL_IDEA (outcome: "not applicable", includes explanation)
   → BUILD
 

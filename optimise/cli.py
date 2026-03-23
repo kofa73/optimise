@@ -298,6 +298,8 @@ def do_run(directory):
 
             if rc != 0:
                 log.error(f"[CODE] AI implementation failed ({provider})")
+                scope = settings.get("commit_scope", ["src/"])
+                target_git.rollback_scope(scope)
                 retries_left -= 1
                 if retries_left <= 0:
                     state_obj = _BuildState(directory, target_repo_path, target_git,
