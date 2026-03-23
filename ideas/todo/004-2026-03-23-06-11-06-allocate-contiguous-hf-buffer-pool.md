@@ -1,0 +1,3 @@
+perf: allocate all effective HF scale buffers as a single contiguous memory pool
+
+Currently, `HF` wavelet detail buffers are allocated individually using a loop that calls `dt_alloc_align_float` up to `MAX_NUM_SCALES` times. We can replace this loop with a single allocation of one large contiguous memory block (`width * height * 4 * effective_scales`) and simply partition the pointers for each `HF[s]`. This minimizes allocator overhead, guarantees a tightly packed memory layout to reduce virtual memory fragmentation, and slightly improves TLB locality when the PDE solver shifts between scales.

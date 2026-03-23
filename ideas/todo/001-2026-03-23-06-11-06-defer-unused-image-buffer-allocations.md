@@ -1,0 +1,3 @@
+perf: conditionally defer temporary image buffer allocations to when actually required
+
+Currently, the full-image temporary buffers `temp1`, `temp2`, and `LF_even` are unconditionally allocated via `dt_iop_alloc_image_buffers` at the start of `process`. However, many fast-path presets (like `sharpness | fast` where `iterations == 1`, `scales == 1`, and `has_mask == false`) never use these buffers. `temp1` is only needed if `has_mask` is true or `iterations > 2`; `temp2` is only needed if `iterations > 1`; and `LF_even` is only needed if `scales > 1`. By conditionally allocating these buffers only when their respective conditions are met, we can save hundreds of megabytes of useless VMA allocations and reduce TLB tracking overhead for single-iteration pipelines.
