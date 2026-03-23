@@ -1,3 +1,0 @@
-perf: remove dead code convolution matrix generators
-
-The functions `compute_kernel`, `isotrope_laplacian`, `build_matrix`, `rotation_matrix_gradient`, and `rotation_matrix_isophote` were originally used to populate a 9-element array for generalized kernel convolutions. Since the introduction of `accumulate_convolution_direct`, which computes these symmetries entirely algebraically without intermediate arrays, these generator functions are never called. Removing this 100+ line block of dead code from `diffuse.c` cleans up the file, reduces compilation time, and ensures the compiler does not waste optimization passes analyzing unreachable functions.
