@@ -500,7 +500,8 @@ STARTUP
 
 ```
 BASELINE
-  verify target repo clean and on correct branch (hard fail if not)
+  verify commit_scope is clean (hard fail if dirty)
+  ensure perf-logs/ directory exists (create if missing)
   build (hard fail on error, no retries)
   quality check if configured (hard fail on error, no retries)
     Note: unlike req.md which suggests skipping quality at baseline, we run it

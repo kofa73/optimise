@@ -174,6 +174,14 @@ def do_run(directory):
         if state == StartupState.BASELINE:
             log.info("[BASELINE] Establishing baseline...")
 
+            # Preconditions
+            scope = settings.get("commit_scope", ["src/"])
+            dirty = target_git.is_dirty(scope)
+            if dirty:
+                log.error(f"[BASELINE] commit_scope is dirty: {dirty}")
+                sys.exit(1)
+            os.makedirs(os.path.join(directory, "perf-logs"), exist_ok=True)
+
             # Build
             ok, output = run_shell_step("BUILD", settings["build_cmd"], cwd=target_repo_path)
             if not ok:

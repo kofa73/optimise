@@ -3,6 +3,7 @@ import os
 import subprocess
 import pytest
 from unittest.mock import MagicMock, patch
+import optimise.cli
 from optimise.cli import (
     do_init, _BuildState, _succeed_idea, _fail_idea,
     _generate_ideas, GenerationResult, _do_build_test_benchmark,
@@ -763,5 +764,108 @@ class TestCodingFailureRevertsScope:
         assert len(file_states_at_call) == 2
         # On the second attempt the file must be clean, not the partial edit
         assert file_states_at_call[1] == "original"
+
+
+class TestBaselinePreconditions:
+    """BASELINE must check commit_scope cleanliness and create perf-logs/."""
+
+    def _setup_repos(self, tmp_path, *, create_perf_logs=True):
+        """Create target + script repos ready for BASELINE state."""
+        target = tmp_path / "target"
+        target.mkdir()
+        _init_git(target)
+        (target / "src").mkdir()
+        (target / "src" / "main.c").write_text("original")
+        subprocess.run(["git", "add", "."], cwd=target, check=True,
+                        capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init src"], cwd=target,
+                        check=True, capture_output=True)
+
+        script = tmp_path / "script"
+        script.mkdir()
+        _init_git(script)
+        for d in ["ideas/todo", "ideas/coding", "ideas/testing",
+                   "ideas/done"]:
+            (script / d).mkdir(parents=True, exist_ok=True)
+        if create_perf_logs:
+            (script / "perf-logs").mkdir(parents=True, exist_ok=True)
+        (script / "instructions.md").write_text("test instructions")
+        (script / "learnings.md").write_text(
+            "## What works\n\n## What to avoid\n"
+        )
+        subprocess.run(["git", "add", "."], cwd=script, check=True,
+                        capture_output=True)
+        subprocess.run(["git", "commit", "-m", "setup"], cwd=script,
+                        check=True, capture_output=True)
+
+        branch = subprocess.run(
+            ["git", "branch", "--show-current"], cwd=target,
+            capture_output=True, text=True,
+        ).stdout.strip()
+
+        (script / "settings.conf").write_text(
+            f"target_repo: {target}\n"
+            f"branch: {branch}\n"
+            f"optimisation_target: src/main.c\n"
+            f"instructions: instructions.md\n"
+            f"build_cmd: true\n"
+            f"bench_cmd: echo 'user 10.0 cpu 100.0'\n"
+            f"max_retries: 2\n"
+            f"max_iterations: 1\n"
+            f"max_consecutive_perf_failures: 5\n"
+            f"max_runtime_minutes: 60\n"
+            f"min_improvement_pct: 0.5\n"
+            f"individual_regression_tradeoff: 2\n"
+            f"num_warmup_iterations: 0\n"
+            f"benchmark_convergence_threshold_pct: 1\n"
+            f"benchmark_convergence_tail_runs: 3\n"
+            f"commit_scope: src/\n"
+            f"idea_generation_batch_size: 5\n"
+            f"llm_timeout: 60\n"
+        )
+
+        return target, script
+
+    def test_hard_fails_when_commit_scope_dirty(self, tmp_path, monkeypatch):
+        """BASELINE must sys.exit(1) if commit_scope has uncommitted changes."""
+        target, script = self._setup_repos(tmp_path)
+        # Dirty a file in commit_scope
+        (target / "src" / "main.c").write_text("dirty")
+
+        # If the dirty check is missing, the build step would be reached.
+        # Replace it with something that makes the test fail loudly.
+        class _BuildReached(Exception):
+            pass
+        monkeypatch.setattr(
+            optimise.cli, "run_shell_step",
+            lambda *a, **kw: (_ for _ in ()).throw(_BuildReached()),
+        )
+
+        mock_ai = MagicMock()
+        with patch("optimise.cli.AIRouter", return_value=mock_ai), \
+             patch("optimise.cli.determine_startup_state",
+                   return_value=StartupState.BASELINE):
+            with pytest.raises(SystemExit):
+                do_run(str(script))
+
+    def test_creates_perf_logs_dir_when_missing(self, tmp_path, monkeypatch):
+        """BASELINE must create perf-logs/ if it doesn't exist."""
+        target, script = self._setup_repos(tmp_path, create_perf_logs=False)
+
+        monkeypatch.setattr(
+            optimise.cli, "run_benchmark_loop",
+            lambda *a, **kw: [{"user": 10.0, "cpu": 100.0}],
+        )
+        mock_ai = MagicMock()
+        with patch("optimise.cli.AIRouter", return_value=mock_ai), \
+             patch("optimise.cli.determine_startup_state",
+                   return_value=StartupState.BASELINE), \
+             patch("optimise.cli._generate_ideas",
+                   return_value=GenerationResult.OK):
+            do_run(str(script))
+
+        assert (script / "perf-logs").is_dir()
+        assert (script / "perf-logs" / "baseline-perf.md").exists()
+        assert (script / "perf-logs" / "current-best-perf.md").exists()
 
 
