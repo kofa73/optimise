@@ -1,3 +1,0 @@
-perf: reuse pre-loaded HF_center and LF_center in final pixel integration
-
-In the DIFFUSE_PIXEL_BODY macro, the final integration computes `acc[c] = HF[index + c] * strength + acc[c] / variance[c]` and `result[c] = fmaxf(acc[c] + LF[index + c], 0.f)`. Since `index == n4` (both equal `4 * (i * width + j)`), these loads are identical to `HF_center[c]` and `LF_center[c]` which were already loaded into local variables during the neighbor loading phase. Replace `HF[index + c]` with `HF_center[c]` and `LF[index + c]` with `LF_center[c]` to guarantee the compiler uses register-resident values instead of potentially re-fetching from memory. The proven pattern of replacing buffer indexing with pre-loaded scalars has yielded ~11.9% in prior experiments.
