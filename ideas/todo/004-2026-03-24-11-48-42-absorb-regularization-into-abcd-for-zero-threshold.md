@@ -1,0 +1,3 @@
+perf: absorb variance regularization factor into ABCD constants when threshold is zero
+
+The per-pixel variance is calculated as `variance = threshold + sum_sq * reg_factor`, followed by the division `acc / variance`. For presets like "sharpen demosaicing" where `variance_threshold` is exactly `0.0f`, this mathematically becomes `acc / (sum_sq * reg_factor)`. Since `acc` is a linear combination of the `ABCD` speeds, we can factor `reg_factor` out of the denominator and mathematically absorb `1.0f / reg_factor` directly into the loop-invariant `ABCD` constants before the row loop. This allows the inner loop to divide directly by the unscaled `sum_sq`, eliminating an expensive inner-loop FMA multiplication per channel without requiring loop unswitching.

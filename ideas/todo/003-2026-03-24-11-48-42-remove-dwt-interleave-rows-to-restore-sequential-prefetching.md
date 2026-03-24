@@ -1,0 +1,3 @@
+perf: remove dwt_interleave_rows to restore optimal hardware memory prefetching
+
+The outer row loops currently use `dwt_interleave_rows` to process image rows in strided jumps, an old technique originally intended to improve 2D cache locality. However, modern CPU hardware prefetchers are heavily optimized for simple, sequential linear memory access. By jumping across rows, the interleaving defeats L1/L2 linear prefetchers and causes unnecessary cache thrashing. Replacing the interleaved index with a straightforward sequential row loop (`const size_t i = row;`) in both the PDE solver and B-spline decomposition will restore optimal hardware prefetcher behavior and improve memory throughput.

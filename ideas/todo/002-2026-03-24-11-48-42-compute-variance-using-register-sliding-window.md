@@ -1,0 +1,3 @@
+perf: compute 3x3 variance using a register-based sliding window
+
+The high-frequency variance calculation performs 9 floating-point multiplications and 8 additions per channel for every pixel independently. By exploiting the separable nature of the 3x3 unweighted sum-of-squares window, we can compute vertical column squares (`S(j) = hf_top^2 + hf_center^2 + hf_bottom^2`) and maintain them in three local SIMD variables (`left`, `center`, `right`). As the column loop advances, we shift these registers and only calculate the single new rightmost column. This sliding window approach slashes the ALU cost from 9 squares to 3, and 8 additions to 4 per pixel, entirely within native registers without any cache-blocking or memory overhead.

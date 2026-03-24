@@ -1,0 +1,3 @@
+perf: fuse matched gradient and laplacian accumulations for fully isotropic presets
+
+The fully-isotropic fast path currently processes matched gradient (orders 1 and 3) and matched laplacian (orders 2 and 4) diffusions as two distinct spatial convolutions. For presets like "sharpen demosaicing" where all four orders share identical speeds (`first = second = third = fourth = -0.25f`), `ABCD[0]` is equal to `ABCD[1]`. By introducing an `ALL_MATCHED` macro path, we can algebraically combine the gradient and laplacian speed coefficients into a single `(ABCD[0] + ABCD[1])` scalar and compute the entire isotropic PDE accumulation in a single step. This halves the convolution arithmetic and stencil combinations compared to the existing paired-matched path.
