@@ -1,3 +1,0 @@
-perf: use explicit fmaf() chains for variance sum-of-squares accumulation
-
-The variance computation `sqf(hf0) + sqf(hf1) + ... + sqf(hf8)` expands to 9 multiplications and 8 additions. On FMA-capable hardware, these can be fused into 8 FMA instructions + 1 multiply, nearly halving the micro-op count for this computation. While the compiler may generate FMAs with `-ffast-math`, without it the C standard forbids this fusion (due to different rounding). Rewrite the variance as an explicit `fmaf(hf0, hf0, fmaf(hf1, hf1, ...))` chain to guarantee FMA usage regardless of compiler flags. The variance is computed for every pixel unconditionally and represents a significant fraction of per-pixel ALU in the fully isotropic case, where angle/exp computations are skipped.
