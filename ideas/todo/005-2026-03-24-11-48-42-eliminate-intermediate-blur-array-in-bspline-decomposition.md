@@ -1,3 +1,0 @@
-perf: eliminate intermediate blur stack array in B-spline decomposition
-
-In `decompose_2D_Bspline_diffuse`, the horizontal B-spline pass writes its output into a local `dt_aligned_pixel_t blur` stack array, which is then copied channel-by-channel into the `LF` memory buffer. We can eliminate this intermediate stack allocation and the redundant memory copy loop entirely by passing `LF + index` directly as the destination pointer to `_bspline_horizontal`. Since the inline function only writes its final accumulated result once at the end, this safely stores the result directly in the destination memory. The high-frequency detail calculation can then simply read `LF[index + c]`, which is guaranteed to be an immediate L1 cache hit.
