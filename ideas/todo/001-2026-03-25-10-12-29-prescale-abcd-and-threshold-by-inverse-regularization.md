@@ -1,3 +1,0 @@
-perf: scale ABCD and threshold by inverse regularization factor to remove inner-loop multiply
-
-The PDE solver currently computes its denominator by multiplying the variance sum of squares by `regularization_factor` for every channel in the inner loop. By mathematically factoring this out—dividing both the `ABCD` speed constants and the `variance_threshold` by `regularization_factor` once per scale outside the spatial loop—we can evaluate the division as `(ABCD_scaled * conv) / (sum_of_squares + threshold_scaled)`. This eliminates the per-channel `variance[c] * regularization_factor` multiplication entirely, replacing it with a lower-latency addition (or zero operations for presets like "sharpen demosaicing" where the threshold is exactly zero).
