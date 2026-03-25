@@ -1,3 +1,0 @@
-perf: absorb variance threshold and regularization into accumulation loop
-
-The high-frequency variance is currently initialized to zero, summed across 9 neighbor squares, and then updated in a standalone pass via `variance[c] = variance_threshold + variance[c] * regularization_factor`. This isolates the scale-and-shift into a separate dependency barrier. By initializing the variance registers directly to `variance_threshold` before the neighborhood loop, and distributing the `regularization_factor` into the squares as they are accumulated, we completely eliminate the standalone post-processing pass. This tighter algebraic structure reduces iteration overhead and helps the compiler pipeline the operations natively without relying on explicit fast-math approximations.
