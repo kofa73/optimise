@@ -1,3 +1,0 @@
-perf: apply register-based sliding window to LF and HF neighbor memory fetches
-
-The PDE convolution currently fetches all 9 neighbor pixels from L1 cache for every pixel evaluated. Because the spatial loop processes pixels linearly across a row, the left and center columns of the current pixel perfectly overlap with the center and right columns of the previous pixel. By carrying these columns forward in registers to the next loop iteration, we can reduce the inner-loop memory loads from 9 to 3 per layer (fetching only the new right column). This drastically cuts L1 bandwidth and allows the stencil sums to be computed incrementally.
