@@ -1,3 +1,0 @@
-perf: compute matched combinations directly to eliminate standalone LF/HF stack arrays
-
-For fully matched passes, the code currently computes standalone symmetric pixel combination arrays for `LF` and `HF` independently in the initial neighbor-loading loop, only to iterate over them in a subsequent block to add them together into `combined` arrays. By evaluating the matched macro conditions directly within the initial neighbor-loading loop, we can compute the `combined` sums immediately (e.g., `combined_cross[c] = (lf08 - lf26) + (hf08 - hf26)`) and completely bypass allocating, storing, and fetching the intermediate standalone `LF` and `HF` arrays. This strictly halves the stack memory footprint for symmetric combinations and significantly reduces L1 cache traffic.
