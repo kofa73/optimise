@@ -1,0 +1,3 @@
+perf: explicitly scalarize accumulation and variance arrays to prevent L1 spills
+
+In the PDE pixel loop, intermediate vectors like `acc`, `variance`, and local convolution sums are declared as `dt_aligned_pixel_t` stack arrays and processed via `for_each_channel`. Because compilers must safely handle potential aliasing when these arrays interact with macros and SIMD regions, they are frequently forced to spill them to L1 memory instead of mapping them cleanly to vector registers. By replacing these inner structures with strictly typed native scalar variables (e.g., `float acc_0, acc_1...`) and manually unrolling their updates, we force the compiler to keep the entire integration pipeline in fast hardware registers, eliminating latent store-to-load forwarding penalties.
