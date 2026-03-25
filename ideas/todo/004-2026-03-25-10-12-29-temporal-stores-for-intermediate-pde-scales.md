@@ -1,0 +1,3 @@
+perf: use temporal stores for intermediate PDE scale outputs to preserve L3 cache hits
+
+The PDE solver unconditionally uses nontemporal (streaming) stores for its output writes. While streaming stores are optimal for the final scale output (which is sent to the next module), outputs from intermediate wavelet scales are immediately consumed as inputs by the next finer scale (s-1) in the reconstruction loop. Using temporal stores for these intermediate scales allows the data to remain in the L2/L3 cache between scale passes (especially crucial during tiled processing), avoiding a full read-allocate round-trip to main memory and significantly improving memory bandwidth efficiency.

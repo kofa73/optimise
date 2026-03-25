@@ -1,0 +1,3 @@
+perf: pre-combine matched LF and HF pixels before computing symmetric spatial sums
+
+When LF and HF convolution speeds are identical (as in "sharpen demosaicing"), the code currently computes symmetric block sums (corners, tb, lr) for LF and HF independently, and then adds the resulting sums together. By pre-adding the raw neighbor pixels immediately after loading (e.g., `px0 = lf0 + hf0`) and computing the symmetric combinations directly from these fused pixels, we avoid computing the structural sums twice. This saves 3 vector additions per channel per pixel and further reduces peak register pressure in the fully-isotropic path.
