@@ -1,0 +1,3 @@
+perf: defer inverse magnitude scaling to the directional correction calculation
+
+Currently, the squared inverse magnitude (`inv_mag_sq`) is multiplied into both the `cos²θ` and `cosθ·sinθ` angular terms during the gradient/Laplacian setup phase. By deferring this normalization and instead factoring it out of the directional correction equation (`dir_corr = (D_unnorm * axial_diff - cross_unnorm * cross_corners) * inv_mag_sq`), we eliminate one floating-point multiplication per channel. This complements the direct `D` computation by avoiding the storage and repeated scaling of pre-normalized angular tensors.

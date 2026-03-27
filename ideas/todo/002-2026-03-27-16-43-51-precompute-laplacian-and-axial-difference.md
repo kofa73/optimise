@@ -1,0 +1,3 @@
+perf: precompute central Laplacian and axial differences to eliminate accumulation ALU
+
+Currently, `accumulate_convolution_direct` recomputes the `iso_base` (the standard 5-point discrete Laplacian: `sum_lr + sum_tb - 4*center`) and the `sum_lr - sum_tb` axial difference on the fly from raw spatial neighbor sums. By computing `iso_base` and `axial_diff` upfront during the neighbor fetch phase and passing them directly to the accumulator, we save several additions inside the core convolution loop. Crucially, for matched orders, we can sum these derived values (`LF_iso_base + HF_iso_base`) directly, compounding the savings by entirely bypassing the combination of raw individual axis sums.

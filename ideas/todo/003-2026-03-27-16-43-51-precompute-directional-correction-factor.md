@@ -1,0 +1,3 @@
+perf: compute D (2cos²θ - 1) directly from spatial derivatives to eliminate accumulation math
+
+In the gradient and Laplacian angle math, instead of computing and passing `cos²θ` into the accumulation loop where it undergoes the transformation `2.0f * cos_theta2 - 1.0f`, we can compute `D` directly as `(gx_sq - gy_sq) / mag_sq`. By exploiting this algebraic identity, we completely avoid computing a multiplication by 2.0 and a subtraction of 1.0 for every channel inside `accumulate_convolution_direct`, directly yielding the directional correction factor.
