@@ -1,3 +1,0 @@
-perf: rewrite anisotropic accumulation to save inner-loop multiplications
-
-By expanding the `alpha` and `beta` blending weights in `accumulate_convolution_direct`, we can algebraically simplify the accumulation from `abcd * (0.5 * (1+c2) * iso + 0.5 * (1-c2) * dir)` to `(abcd * 0.5) * ((iso + dir) + c2 * (iso - dir))` for the ISOPHOTE path, and `(abcd * 0.5) * ((iso - dir) + c2 * (iso + dir))` for the GRADIENT path. This mathematically identical formulation exploits symmetry to eliminate 3 floating-point multiplications per channel for every anisotropic convolution, replacing them with cheaper additions.
