@@ -133,8 +133,8 @@ class AIRouter:
             )
 
             if provider_name is None:
-                log.warning("All AI providers exhausted. Waiting 5 minutes...")
-                time.sleep(300)
+                log.warning("All AI providers exhausted. Waiting 2 hours...")
+                time.sleep(7200)
                 self.reset_providers()
                 continue
 
