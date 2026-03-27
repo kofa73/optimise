@@ -1,3 +1,0 @@
-perf: unify top-bottom and left-right sums into a single direct-neighbor sum for isotropic paths
-
-For fully isotropic diffusion presets, the horizontal and vertical neighbor sums (`sum_tb` and `sum_lr`) are always applied symmetrically with identical weights (0.5f) to form the isotropic base, and are never used independently to compute directional corrections. By pre-adding them into a single `sum_direct = lf1 + lf3 + lf5 + lf7` variable immediately inside the pixel body, we eliminate the need to store and manipulate `tb` and `lr` independently. This reduces local variable tracking and saves a vector addition per channel in the main convolution accumulation.
