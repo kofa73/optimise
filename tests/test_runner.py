@@ -357,7 +357,40 @@ Replace the for loop with explicit scalar operations.
         assert ideas == []
 
 
-from optimise.runner import parse_not_applicable
+from optimise.runner import parse_not_applicable, parse_code_review_response
+
+
+class TestParseCodeReviewResponse:
+    def test_lgtm_returns_approved(self):
+        approved, feedback = parse_code_review_response("LGTM")
+        assert approved is True
+        assert feedback == ""
+
+    def test_lgtm_with_trailing_newline(self):
+        approved, feedback = parse_code_review_response("LGTM\n")
+        assert approved is True
+        assert feedback == ""
+
+    def test_feedback_returns_not_approved(self):
+        text = "Issue: stale comment on line 42\nThe comment references removed code."
+        approved, feedback = parse_code_review_response(text)
+        assert approved is False
+        assert "stale comment on line 42" in feedback
+
+    def test_empty_string_returns_not_approved(self):
+        approved, feedback = parse_code_review_response("")
+        assert approved is False
+        assert feedback == ""
+
+    def test_lgtm_case_insensitive(self):
+        approved, feedback = parse_code_review_response("lgtm")
+        assert approved is True
+        assert feedback == ""
+
+    def test_lgtm_with_whitespace(self):
+        approved, feedback = parse_code_review_response("  LGTM  \n")
+        assert approved is True
+        assert feedback == ""
 
 
 class TestParseNotApplicable:

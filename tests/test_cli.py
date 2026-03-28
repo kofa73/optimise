@@ -868,6 +868,102 @@ class TestBaselinePreconditions:
         assert (script / "perf-logs" / "current-best-perf.md").exists()
 
 
+class TestDoCodeReview:
+    """Tests for _do_code_review()."""
+
+    def test_lgtm_returns_true(self):
+        from optimise.cli import _do_code_review
+        ai = MagicMock()
+        ai.call.return_value = ("LGTM\n", 0, "test-provider")
+        target_git = MagicMock()
+        target_git.diff_scope.return_value = "diff --git a/src/main.c\n-old\n+new"
+        settings = {"commit_scope": ["src/"], "llm_timeout": 60}
+
+        approved, feedback = _do_code_review(
+            target_git, ai, settings, "Optimise.", "Remove loop\n\nDetails."
+        )
+        assert approved is True
+        assert feedback == ""
+
+    def test_feedback_returns_false_with_feedback(self):
+        from optimise.cli import _do_code_review
+        ai = MagicMock()
+        ai.call.return_value = ("Stale comment on line 42.", 0, "test-provider")
+        target_git = MagicMock()
+        target_git.diff_scope.return_value = "diff --git a/src/main.c\n-old\n+new"
+        settings = {"commit_scope": ["src/"], "llm_timeout": 60}
+
+        approved, feedback = _do_code_review(
+            target_git, ai, settings, "Optimise.", "Remove loop\n\nDetails."
+        )
+        assert approved is False
+        assert "Stale comment" in feedback
+
+    def test_llm_failure_returns_true(self):
+        from optimise.cli import _do_code_review
+        ai = MagicMock()
+        ai.call.return_value = ("", 1, "test-provider")
+        target_git = MagicMock()
+        target_git.diff_scope.return_value = "diff --git a/src/main.c\n-old\n+new"
+        settings = {"commit_scope": ["src/"], "llm_timeout": 60}
+
+        approved, feedback = _do_code_review(
+            target_git, ai, settings, "Optimise.", "Remove loop\n\nDetails."
+        )
+        assert approved is True
+        assert feedback == ""
+
+    def test_empty_diff_skips_review(self):
+        from optimise.cli import _do_code_review
+        ai = MagicMock()
+        target_git = MagicMock()
+        target_git.diff_scope.return_value = ""
+        settings = {"commit_scope": ["src/"], "llm_timeout": 60}
+
+        approved, feedback = _do_code_review(
+            target_git, ai, settings, "Optimise.", "Remove loop\n\nDetails."
+        )
+        assert approved is True
+        assert feedback == ""
+        ai.call.assert_not_called()
+
+    def test_uses_normal_tier(self):
+        from optimise.cli import _do_code_review
+        ai = MagicMock()
+        ai.call.return_value = ("LGTM", 0, "test-provider")
+        target_git = MagicMock()
+        target_git.diff_scope.return_value = "some diff"
+        settings = {"commit_scope": ["src/"], "llm_timeout": 60}
+
+        _do_code_review(target_git, ai, settings, "Optimise.", "idea")
+        _, kwargs = ai.call.call_args
+        assert kwargs["tier"] == "normal"
+
+    def test_passes_llm_timeout(self):
+        from optimise.cli import _do_code_review
+        ai = MagicMock()
+        ai.call.return_value = ("LGTM", 0, "test-provider")
+        target_git = MagicMock()
+        target_git.diff_scope.return_value = "some diff"
+        settings = {"commit_scope": ["src/"], "llm_timeout": 120}
+
+        _do_code_review(target_git, ai, settings, "Optimise.", "idea")
+        _, kwargs = ai.call.call_args
+        assert kwargs["timeout"] == 120
+
+    def test_passes_purpose(self):
+        from optimise.cli import _do_code_review
+        ai = MagicMock()
+        ai.call.return_value = ("LGTM", 0, "test-provider")
+        target_git = MagicMock()
+        target_git.diff_scope.return_value = "some diff"
+        settings = {"commit_scope": ["src/"], "llm_timeout": 60}
+
+        _do_code_review(target_git, ai, settings, "Optimise.", "idea")
+        _, kwargs = ai.call.call_args
+        assert kwargs["purpose"] == "reviewing code changes"
+
+
 class TestComputeTarget:
     """_compute_target sets targeting state in settings dict."""
 

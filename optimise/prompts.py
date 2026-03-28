@@ -109,6 +109,56 @@ When done editing, output a brief summary of what you changed.
 """
 
 
+def build_code_review_prompt(instructions, diff, idea_content):
+    """Build prompt for automated code review of LLM-generated changes.
+
+    Uses the "normal" (cheaper) LLM tier. Checks a narrow, hardcoded
+    checklist rather than doing a general code review.
+    """
+    return f"""\
+# Code Review
+
+You are reviewing code changes made by another AI. Your job is to check
+a specific checklist — nothing else. Do not suggest improvements beyond
+the checklist.
+
+## Project Instructions (for context)
+
+{instructions}
+
+## Idea Being Implemented
+
+{idea_content}
+
+## Diff to Review
+
+```diff
+{diff}
+```
+
+## Checklist
+
+Check ONLY these items:
+
+1. **Stale comments**: Are there comments in the diff that no longer describe the code
+   they annotate? This includes comments left behind after removing or changing code.
+2. **Macro misuse**: Were large macros introduced? Large code blocks should use
+   `static inline` functions with `__attribute__((always_inline))` instead of macros.
+3. **Unswitched duplication**: Is there duplicated code from loop unswitching that
+   should be factored into separate `always_inline` helper functions?
+4. **OpenCL contamination**: Were any `_cl` functions or OpenCL-only code paths
+   modified? The CPU benchmark does not test those paths, so they must not be changed
+   unless the change is trivially required by a shared-code refactor.
+
+## Response Format
+
+- If ALL checks pass, respond with exactly `LGTM` on the first line. Nothing else.
+- If ANY check fails, describe the specific issue(s) found. Be concise and actionable.
+
+**Do not edit any files. Do not run any commands. Only provide your review verdict.**
+"""
+
+
 def build_review_prompt(instructions, done_ideas):
     """Build prompt for periodic strategy review.
 

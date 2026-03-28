@@ -27,12 +27,13 @@ No build step, linter, or formatter is configured. The project is pure Python 3.
 The core loop in `do_run()` cycles through states:
 
 ```
-BASELINE → GENERATE → CODE → BUILD/TEST/BENCHMARK → SUCCESS/FAIL → GENERATE → ...
+BASELINE → GENERATE → CODE → CODE_REVIEW → BUILD/TEST/BENCHMARK → SUCCESS/FAIL → GENERATE → ...
 ```
 
 - **BASELINE**: Run benchmark to establish `perf-logs/baseline-perf.md` and `perf-logs/current-best-perf.md`
 - **GENERATE**: Produce idea batch via LLM (`ideas/todo/`), optionally run strategy review
 - **CODE**: LLM implements the idea, editing files in the target repo
+- **CODE_REVIEW**: Cheaper LLM (normal tier) reviews the diff against a narrow checklist (stale comments, macro misuse, unswitched duplication, OpenCL contamination). Rejected → feedback loops back to CODE. Approved → proceeds to BUILD
 - **BUILD→TEST→BENCHMARK**: Pipeline in `_do_build_test_benchmark()`. On failure, retries with error context. On success, commits to target repo and updates current-best perf log
 
 Startup recovery (`determine_startup_state()` in `runner.py`) detects orphan states and resumes correctly after crashes.
@@ -46,7 +47,7 @@ Startup recovery (`determine_startup_state()` in `runner.py`) detects orphan sta
 | `benchmark.py` | Parse benchmark output (`label=value` format), element-wise best tracking, convergence detection, success evaluation |
 | `settings.py` | Parse `settings.conf` (key: value), validate types/paths, templates for `init` |
 | `ai.py` | `AIRouter` — route calls to Claude CLI or Gemini CLI with failover |
-| `prompts.py` | Build LLM prompts for idea generation, implementation, and strategy review |
+| `prompts.py` | Build LLM prompts for idea generation, implementation, code review, and strategy review |
 | `state.py` | Idea lifecycle: create/list/move/read ideas across `todo/coding/testing/done` |
 | `git.py` | `GitRepo` wrapper — dirty checks, scoped rollback, commit, branch management |
 

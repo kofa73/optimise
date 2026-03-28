@@ -4,6 +4,7 @@ from optimise.prompts import (
     build_generation_prompt,
     build_implementation_prompt,
     build_review_prompt,
+    build_code_review_prompt,
 )
 
 
@@ -103,3 +104,44 @@ class TestReviewPrompt:
         assert "improvement" in prompt
         assert "build failure" in prompt
         assert "learnings.md" in prompt
+
+
+class TestCodeReviewPrompt:
+    def _build(self, **kwargs):
+        defaults = {
+            "instructions": "Optimise diffuse.c for speed.",
+            "diff": "diff --git a/src/main.c\n-old\n+new",
+            "idea_content": "Remove redundant loop\n\nDetails here.",
+        }
+        defaults.update(kwargs)
+        return build_code_review_prompt(**defaults)
+
+    def test_includes_diff(self):
+        prompt = self._build()
+        assert "-old" in prompt
+        assert "+new" in prompt
+
+    def test_includes_instructions(self):
+        prompt = self._build()
+        assert "Optimise diffuse.c for speed." in prompt
+
+    def test_includes_idea_content(self):
+        prompt = self._build()
+        assert "Remove redundant loop" in prompt
+
+    def test_includes_checklist_items(self):
+        prompt = self._build()
+        lower = prompt.lower()
+        assert "stale" in lower and "comment" in lower
+        assert "macro" in lower
+        assert "duplicat" in lower
+        assert "opencl" in lower or "_cl" in lower
+
+    def test_specifies_lgtm_response_format(self):
+        prompt = self._build()
+        assert "LGTM" in prompt
+
+    def test_prohibits_edits(self):
+        prompt = self._build()
+        lower = prompt.lower()
+        assert "do not" in lower and "edit" in lower or "must not" in lower and "edit" in lower

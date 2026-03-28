@@ -65,7 +65,9 @@ from optimise.benchmark import (
 from optimise.prompts import (
     build_generation_prompt,
     build_implementation_prompt, build_review_prompt,
+    build_code_review_prompt,
 )
+from optimise.runner import parse_code_review_response
 
 
 import enum
@@ -363,6 +365,25 @@ def do_run(directory):
                 state = StartupState.GENERATE
                 continue
 
+            # Code review before build
+            approved, review_feedback = _do_code_review(
+                target_git, ai, settings, instructions, idea_content,
+            )
+            if not approved:
+                errors_path = os.path.join(directory, "ideas", "coding", "errors.txt")
+                with open(errors_path, "w") as f:
+                    f.write(f"Code review failed:\n\n{review_feedback}")
+                retries_left -= 1
+                if retries_left <= 0:
+                    state_obj = _BuildState(directory, target_repo_path, target_git,
+                                       script_git, settings, idea_file, iteration,
+                                       consecutive_perf_failures, start_time)
+                    _fail_idea(state_obj, "code review failure")
+                    state = StartupState.GENERATE
+                else:
+                    state = StartupState.CODE
+                continue
+
             state_obj = _BuildState(directory, target_repo_path, target_git,
                                script_git, settings, idea_file, iteration,
                                consecutive_perf_failures, start_time)
@@ -584,6 +605,35 @@ def _fail_idea(s, outcome, bench_rows=None, explanation=None):
         cpf += 1
 
     return {"consecutive_perf_failures": cpf}
+
+
+def _do_code_review(target_git, ai, settings, instructions, idea_content):
+    """Review LLM-generated code changes against a narrow checklist.
+
+    Uses the cheaper "normal" LLM tier. Returns (approved, feedback).
+    If the diff is empty or the LLM call fails, skips review (returns approved).
+    """
+    scope = settings.get("commit_scope")
+    diff = target_git.diff_scope(scope)
+    if not diff:
+        return True, ""
+
+    prompt = build_code_review_prompt(instructions, diff, idea_content)
+    output, rc, provider = ai.call(
+        prompt, tier="normal",
+        timeout=settings["llm_timeout"],
+        purpose="reviewing code changes",
+    )
+    if rc != 0:
+        log.warning(f"[CODE_REVIEW] LLM call failed ({provider}), skipping review")
+        return True, ""
+
+    approved, feedback = parse_code_review_response(output)
+    if approved:
+        log.info(f"[CODE_REVIEW] Approved ({provider})")
+    else:
+        log.info(f"[CODE_REVIEW] Rejected ({provider}): {feedback[:120]}")
+    return approved, feedback
 
 
 def _do_review(directory, script_git, ai, instructions, target_repo_path,

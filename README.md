@@ -12,9 +12,10 @@ The system runs a **Continuous Optimization Loop** with the following lifecycle:
 
 1. **Creation (`ideas/todo`)**: When the idea queue is empty, the LLM reads `instructions.md` and `learnings.md` to generate a batch of new optimization ideas, ordered by expected improvement (most impactful first). Each idea filename is prefixed with an ordinal number and timestamp for deterministic execution order.
 2. **Coding (`ideas/coding`)**: The next idea is selected. The LLM modifies the specified files in the `target_repo`.
-3. **Testing (`ideas/testing`)**: The system runs the user-configured build and quality checks. If either fails, the error logs are provided to the LLM to attempt a fix.
-4. **Benchmarking**: If the build and quality checks pass, the changes are benchmarked. A convergence loop is used to measure the performance difference against the current baseline.
-5. **Done (`ideas/done`)**:
+3. **Code Review**: A cheaper LLM (normal tier) reviews the diff against a narrow checklist: stale comments, macro misuse, unswitched code duplication, and OpenCL contamination. If rejected, feedback is sent back to the coding LLM for a retry.
+4. **Testing (`ideas/testing`)**: The system runs the user-configured build and quality checks. If either fails, the error logs are provided to the LLM to attempt a fix.
+5. **Benchmarking**: If the build and quality checks pass, the changes are benchmarked. A convergence loop is used to measure the performance difference against the current baseline.
+6. **Done (`ideas/done`)**:
    - **Success**: The changes are committed to the target repository along with their benchmark results, the baseline is updated, and the idea is marked complete.
    - **Failure**: If performance degrades or build retries are exhausted, the modified files are rolled back using git. The idea is logged with its failure outcome.
 

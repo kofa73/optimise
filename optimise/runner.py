@@ -222,6 +222,21 @@ def parse_generated_ideas(text):
     return ideas
 
 
+def parse_code_review_response(text):
+    """Parse the code review LLM response.
+
+    Returns (approved: bool, feedback: str).
+    Approved if the first line (stripped, case-insensitive) is "LGTM".
+    """
+    stripped = text.strip()
+    if not stripped:
+        return False, ""
+    first_line = stripped.split("\n")[0].strip()
+    if first_line.upper() == "LGTM":
+        return True, ""
+    return False, stripped
+
+
 def parse_not_applicable(text):
     """Check if the LLM response indicates the idea is not applicable.
 

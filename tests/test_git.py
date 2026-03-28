@@ -256,3 +256,47 @@ class TestRollbackScope:
         assert (git_repo / "src" / "main.c").read_text() == "v1" # Rolled back
         assert (git_repo / "tests" / "test.c").read_text() == "dirty" # Not rolled back
 
+
+class TestDiffScope:
+    def _setup_two_dirs(self, git_repo):
+        """Create src/ and tests/ with committed files."""
+        (git_repo / "src").mkdir()
+        (git_repo / "tests").mkdir()
+        (git_repo / "src" / "main.c").write_text("v1")
+        (git_repo / "tests" / "test.c").write_text("v1")
+        subprocess.run(["git", "add", "."], cwd=git_repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "v1"], cwd=git_repo, check=True, capture_output=True)
+
+    def test_returns_diff_for_changed_files_in_scope(self, git_repo):
+        self._setup_two_dirs(git_repo)
+        (git_repo / "src" / "main.c").write_text("v2")
+        repo = GitRepo(str(git_repo))
+        diff = repo.diff_scope(["src/"])
+        assert "main.c" in diff
+        assert "-v1" in diff
+        assert "+v2" in diff
+
+    def test_excludes_changes_outside_scope(self, git_repo):
+        self._setup_two_dirs(git_repo)
+        (git_repo / "src" / "main.c").write_text("v2")
+        (git_repo / "tests" / "test.c").write_text("v2")
+        repo = GitRepo(str(git_repo))
+        diff = repo.diff_scope(["src/"])
+        assert "main.c" in diff
+        assert "test.c" not in diff
+
+    def test_returns_empty_string_when_no_changes(self, git_repo):
+        self._setup_two_dirs(git_repo)
+        repo = GitRepo(str(git_repo))
+        diff = repo.diff_scope(["src/"])
+        assert diff == ""
+
+    def test_none_scope_returns_all_changes(self, git_repo):
+        self._setup_two_dirs(git_repo)
+        (git_repo / "src" / "main.c").write_text("v2")
+        (git_repo / "tests" / "test.c").write_text("v2")
+        repo = GitRepo(str(git_repo))
+        diff = repo.diff_scope(None)
+        assert "main.c" in diff
+        assert "test.c" in diff
+

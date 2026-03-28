@@ -189,6 +189,19 @@ class GitRepo:
         result = self._run(["cat-file", "-e", f"{commit_hash}^{{commit}}"], check=False)
         return result.returncode == 0
 
+    def diff_scope(self, scope=None):
+        """Return unified diff of uncommitted changes within scope prefixes.
+
+        If scope is None or empty, returns diff for all changes.
+        Returns empty string if there are no changes.
+        """
+        args = ["diff", "HEAD"]
+        if scope:
+            args.append("--")
+            args.extend(scope)
+        result = self._run(args, check=False)
+        return result.stdout
+
     def get_file_at_commit(self, commit_hash, file_path):
         """Return the contents of file_path at the given commit_hash as a string.
         
