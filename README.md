@@ -43,8 +43,10 @@ Edit `settings.conf` to configure the required paths and commands:
 - `optimisation_target`: The source file(s) the LLM is allowed to modify.
 - `build_cmd`, `bench_cmd`, `quality_cmd`: Shell commands to build, benchmark, and run test suites.
 - `commit_scope`: The directory scope for dirty file checks and rollbacks (e.g., `src/`).
+- `targeting_mode`: (Optional) `overall` (default) optimises sum(user) across all benchmark instances. `least_improved_instance` dynamically targets the instance that has improved least since baseline.
+- `max_regression_pct`: (Optional) Maximum allowed regression on the guard measure (percent). In `overall` mode, no individual instance may regress more than this. In `least_improved_instance` mode, sum(user) must not regress more than this. Defaults to `3`.
 - `disabled_providers`: (Optional) A comma-separated list of AI providers to permanently disable (e.g., `claude` or `gemini`). Providers missing required system binaries are also permanently disabled automatically.
-- `llm_timeout`: (Optional) Maximum time in seconds to wait for an LLM response before timing out. Defaults to `600`.
+- `llm_timeout`: (Optional) Maximum time in seconds to wait for an LLM response before timing out. Defaults to `3600`.
 
 Next, document the specific optimization goals for the LLM in `instructions.md`.
 

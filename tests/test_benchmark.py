@@ -119,65 +119,141 @@ from optimise.benchmark import evaluate_success
 
 
 class TestEvaluateSuccess:
-    def test_clear_improvement_passes(self):
+    # --- overall mode (default) ---
+
+    def test_overall_clear_improvement_passes(self):
         baseline = [{"user": 10.0}, {"user": 10.0}]
         result = [{"user": 9.0}, {"user": 9.0}]
         ok, pct, detail = evaluate_success(
-            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
         )
         assert ok
         assert pct == pytest.approx(10.0)
 
-    def test_below_min_improvement_fails(self):
+    def test_overall_below_min_improvement_fails(self):
         baseline = [{"user": 10.0}]
         result = [{"user": 9.96}]
         ok, pct, detail = evaluate_success(
-            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
         )
         assert not ok
-        assert "noise" in detail.lower() or "min" in detail.lower()
+        assert "minimum" in detail.lower() or "below" in detail.lower()
 
-    def test_regression_fails(self):
+    def test_overall_regression_fails(self):
         baseline = [{"user": 10.0}]
         result = [{"user": 10.5}]
         ok, pct, detail = evaluate_success(
-            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
         )
         assert not ok
 
-    def test_individual_regression_exceeds_tradeoff_fails(self):
+    def test_overall_instance_regression_exceeds_cap_fails(self):
+        """Guard: any instance regressing > max_regression_pct fails."""
         baseline = [{"user": 10.0}, {"user": 10.0}]
-        result = [{"user": 8.0}, {"user": 10.5}]  # row 2 regressed 5%, sum improved 7.5%
+        result = [{"user": 8.0}, {"user": 10.5}]  # row 2: 5% regression > 3%
         ok, pct, detail = evaluate_success(
-            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
         )
-        # 7.5% improvement >= 2 * 5% regression = 10% -> FAILS tradeoff
         assert not ok
+        assert "regress" in detail.lower()
 
-    def test_individual_regression_passes_with_enough_improvement(self):
+    def test_overall_instance_regression_within_cap_passes(self):
+        """Guard: instance regressing <= max_regression_pct is OK."""
         baseline = [{"user": 10.0}, {"user": 10.0}]
-        result = [{"user": 7.0}, {"user": 10.2}]  # row 2 regressed 2%, sum improved 14%
+        result = [{"user": 8.0}, {"user": 10.2}]  # row 2: 2% regression <= 3%
         ok, pct, detail = evaluate_success(
-            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
-        )
-        # 14% >= 2 * 2% = 4% -> PASSES
-        assert ok
-
-    def test_zero_tradeoff_ignores_individual_regression(self):
-        baseline = [{"user": 10.0}, {"user": 10.0}]
-        result = [{"user": 5.0}, {"user": 14.0}]  # row 2 regressed 40%, sum improved 5%
-        ok, pct, detail = evaluate_success(
-            baseline, result, min_improvement_pct=0.5, regression_tradeoff=0
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
         )
         assert ok
 
-    def test_no_improvement_fails(self):
+    def test_overall_no_improvement_fails(self):
         baseline = [{"user": 10.0}]
         result = [{"user": 10.0}]
         ok, pct, detail = evaluate_success(
-            baseline, result, min_improvement_pct=0.5, regression_tradeoff=2
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
         )
         assert not ok
+
+    # --- instance mode ---
+
+    def test_instance_target_improves_enough_passes(self):
+        """Target: the targeted instance must improve by min_improvement_pct."""
+        baseline = [{"user": 10.0}, {"user": 10.0}]
+        result = [{"user": 10.0}, {"user": 9.0}]   # instance 1: 10% improvement
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
+            targeting_mode="least_improved_instance", target_instance_index=1,
+        )
+        assert ok
+        assert pct == pytest.approx(10.0)  # improvement of targeted instance
+
+    def test_instance_target_not_improved_fails(self):
+        """Target: targeted instance barely improved -> fail."""
+        baseline = [{"user": 10.0}, {"user": 10.0}]
+        result = [{"user": 8.0}, {"user": 9.96}]  # instance 1: only 0.4%
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
+            targeting_mode="least_improved_instance", target_instance_index=1,
+        )
+        assert not ok
+
+    def test_instance_sum_regression_exceeds_cap_fails(self):
+        """Guard: sum(user) must not regress > max_regression_pct."""
+        baseline = [{"user": 5.0}, {"user": 5.0}]   # sum=10
+        result = [{"user": 8.0}, {"user": 4.0}]     # sum=12 -> sum regressed 20% > 3%
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
+            targeting_mode="least_improved_instance", target_instance_index=1,
+        )
+        assert not ok
+        assert "regress" in detail.lower()
+
+    def test_instance_sum_regression_within_cap_passes(self):
+        """Guard: sum(user) regressing <= max_regression_pct is OK."""
+        baseline = [{"user": 5.0}, {"user": 5.0}]   # sum=10
+        result = [{"user": 5.1}, {"user": 4.0}]     # sum=9.1, sum improved 9%. inst 1 improved 20%
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
+            targeting_mode="least_improved_instance", target_instance_index=1,
+        )
+        assert ok
+
+
+from optimise.benchmark import find_least_improved_instance
+
+
+class TestFindLeastImprovedInstance:
+    def test_finds_least_improved(self):
+        baseline = [{"user": 10.0}, {"user": 10.0}, {"user": 10.0}]
+        current  = [{"user": 8.0},  {"user": 9.5},  {"user": 7.0}]
+        # improvements: 20%, 5%, 30% → least improved = index 1
+        result = find_least_improved_instance(baseline, current)
+        assert result["index"] == 1
+        assert result["baseline_user"] == pytest.approx(10.0)
+        assert result["current_user"] == pytest.approx(9.5)
+        assert result["improvement_pct"] == pytest.approx(5.0)
+
+    def test_negative_improvement_selected(self):
+        """A regressed instance has negative improvement and is the worst."""
+        baseline = [{"user": 10.0}, {"user": 10.0}]
+        current  = [{"user": 9.0},  {"user": 11.0}]
+        # improvements: 10%, -10% → least improved = index 1
+        result = find_least_improved_instance(baseline, current)
+        assert result["index"] == 1
+        assert result["improvement_pct"] == pytest.approx(-10.0)
+
+    def test_all_same_picks_first(self):
+        baseline = [{"user": 10.0}, {"user": 10.0}]
+        current  = [{"user": 9.0},  {"user": 9.0}]
+        result = find_least_improved_instance(baseline, current)
+        assert result["index"] == 0  # tied, first wins
+
+    def test_single_row(self):
+        baseline = [{"user": 10.0}]
+        current  = [{"user": 9.0}]
+        result = find_least_improved_instance(baseline, current)
+        assert result["index"] == 0
+        assert result["improvement_pct"] == pytest.approx(10.0)
 
 
 from optimise.benchmark import format_perf_log, parse_perf_log
@@ -226,3 +302,44 @@ class TestParsePerfLog:
         assert parsed[0]["cpu"] == pytest.approx(5.372)
         assert parsed[1]["user"] == pytest.approx(0.123)
         assert "cpu" not in parsed[1]
+
+
+from optimise.runner import run_benchmark_loop
+
+
+class TestEarlyAbortInstanceMode:
+    def test_early_abort_on_instance_regression(self, tmp_path):
+        """In instance mode, abort if targeted instance exceeds tolerance."""
+        bench = tmp_path / "bench.sh"
+        # Instance 0 is fine, instance 1 (targeted) regresses badly
+        bench.write_text("#!/bin/sh\necho 'user=9.0'\necho 'user=12.0'\n")
+        bench.chmod(0o755)
+        with pytest.raises(BenchmarkError, match="early abort"):
+            run_benchmark_loop(
+                str(bench), cwd=str(tmp_path),
+                baseline_user_sum=20.0,
+                num_warmup=0,
+                convergence_threshold_pct=0.1,
+                convergence_tail_runs=3,
+                early_abort_pct=0.5,
+                target_instance_index=1,
+                target_instance_baseline=10.0,
+            )
+
+    def test_early_abort_on_sum_in_instance_mode(self, tmp_path):
+        """In instance mode, also abort if sum exceeds tolerance."""
+        bench = tmp_path / "bench.sh"
+        # Instance 1 (targeted) improved, but sum is way worse
+        bench.write_text("#!/bin/sh\necho 'user=19.0'\necho 'user=9.0'\n")
+        bench.chmod(0o755)
+        with pytest.raises(BenchmarkError, match="early abort"):
+            run_benchmark_loop(
+                str(bench), cwd=str(tmp_path),
+                baseline_user_sum=20.0,
+                num_warmup=0,
+                convergence_threshold_pct=0.1,
+                convergence_tail_runs=3,
+                early_abort_pct=0.5,
+                target_instance_index=1,
+                target_instance_baseline=10.0,
+            )

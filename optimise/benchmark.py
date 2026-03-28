@@ -81,6 +81,30 @@ def sum_user(rows):
     return sum(row["user"] for row in rows)
 
 
+def find_least_improved_instance(baseline_rows, current_rows):
+    """Find the instance that has improved the least since baseline.
+
+    Returns dict with index, baseline_user, current_user, improvement_pct.
+    """
+    worst_index = 0
+    worst_improvement = float("inf")
+
+    for i, (b, c) in enumerate(zip(baseline_rows, current_rows)):
+        improvement = (b["user"] - c["user"]) / b["user"] * 100
+        if improvement < worst_improvement:
+            worst_improvement = improvement
+            worst_index = i
+
+    b = baseline_rows[worst_index]
+    c = current_rows[worst_index]
+    return {
+        "index": worst_index,
+        "baseline_user": b["user"],
+        "current_user": c["user"],
+        "improvement_pct": worst_improvement,
+    }
+
+
 class ConvergenceState:
     """Tracks benchmark convergence using a tail counter.
 
@@ -112,48 +136,84 @@ class ConvergenceState:
             self.tail_counter += 1
 
 
-def evaluate_success(baseline_rows, result_rows, min_improvement_pct, regression_tradeoff):
+def evaluate_success(baseline_rows, result_rows, min_improvement_pct, max_regression_pct,
+                     targeting_mode="overall", target_instance_index=None):
     """Evaluate whether a benchmark result is a success.
+
+    Two-check model:
+      overall mode:  target = sum(user), guard = any individual instance
+      instance mode: target = targeted instance, guard = sum(user)
 
     Args:
         baseline_rows: element-wise best rows from current-best
         result_rows: element-wise best rows from this benchmark run
-        min_improvement_pct: minimum sum(user) improvement to accept
-        regression_tradeoff: multiplier for individual regression check
+        min_improvement_pct: minimum improvement on the target measure
+        max_regression_pct: maximum allowed regression on the guard measure
+        targeting_mode: "overall" or "least_improved_instance"
+        target_instance_index: row index of targeted instance (instance mode only)
 
     Returns:
         (success: bool, improvement_pct: float, detail: str)
+        improvement_pct is always relative to the target measure.
     """
     baseline_sum = sum_user(baseline_rows)
     result_sum = sum_user(result_rows)
-    improvement_pct = (baseline_sum - result_sum) / baseline_sum * 100
+    sum_improvement_pct = (baseline_sum - result_sum) / baseline_sum * 100
 
-    # Gate 1: minimum improvement
-    if improvement_pct < min_improvement_pct:
-        return False, improvement_pct, (
-            f"Below minimum improvement threshold: "
-            f"{improvement_pct:.2f}% < {min_improvement_pct}%"
-        )
+    if targeting_mode == "least_improved_instance" and target_instance_index is not None:
+        # Target: the specific instance
+        b = baseline_rows[target_instance_index]["user"]
+        r = result_rows[target_instance_index]["user"]
+        target_improvement_pct = (b - r) / b * 100
 
-    # Gate 2: individual regression tradeoff
-    if regression_tradeoff > 0:
-        max_row_regression = 0.0
-        for b, r in zip(baseline_rows, result_rows):
-            if r["user"] > b["user"]:
-                row_regression = (r["user"] - b["user"]) / b["user"] * 100
-                max_row_regression = max(max_row_regression, row_regression)
-
-        required = regression_tradeoff * max_row_regression
-        if max_row_regression > 0 and improvement_pct < required:
-            return False, improvement_pct, (
-                f"Individual regression too large: row regressed {max_row_regression:.2f}%, "
-                f"need {required:.2f}% sum improvement but only got {improvement_pct:.2f}%"
+        # Check 1 (target): instance must improve enough
+        if target_improvement_pct < min_improvement_pct:
+            return False, target_improvement_pct, (
+                f"Below minimum improvement on targeted instance {target_instance_index}: "
+                f"{target_improvement_pct:.2f}% < {min_improvement_pct}%"
             )
 
-    return True, improvement_pct, (
-        f"Reduced sum(user) from {baseline_sum:.3f}s to {result_sum:.3f}s "
-        f"(~{improvement_pct:.1f}% improvement)"
-    )
+        # Check 2 (guard): sum must not regress beyond cap
+        if sum_improvement_pct < -max_regression_pct:
+            return False, target_improvement_pct, (
+                f"Sum(user) regressed beyond cap: "
+                f"{-sum_improvement_pct:.2f}% regression > {max_regression_pct}% allowed"
+            )
+
+        return True, target_improvement_pct, (
+            f"Instance {target_instance_index}: {b:.3f}s -> {r:.3f}s "
+            f"(~{target_improvement_pct:.1f}% improvement); "
+            f"sum(user): {baseline_sum:.3f}s -> {result_sum:.3f}s"
+        )
+    else:
+        # Overall mode
+        # Check 1 (target): sum must improve enough
+        if sum_improvement_pct < min_improvement_pct:
+            return False, sum_improvement_pct, (
+                f"Below minimum improvement threshold: "
+                f"{sum_improvement_pct:.2f}% < {min_improvement_pct}%"
+            )
+
+        # Check 2 (guard): no individual instance may regress beyond cap
+        max_row_regression = 0.0
+        worst_row = -1
+        for i, (b, r) in enumerate(zip(baseline_rows, result_rows)):
+            if r["user"] > b["user"]:
+                row_regression = (r["user"] - b["user"]) / b["user"] * 100
+                if row_regression > max_row_regression:
+                    max_row_regression = row_regression
+                    worst_row = i
+
+        if max_row_regression > max_regression_pct:
+            return False, sum_improvement_pct, (
+                f"Instance {worst_row} regressed {max_row_regression:.2f}% "
+                f"(> {max_regression_pct}% cap)"
+            )
+
+        return True, sum_improvement_pct, (
+            f"Reduced sum(user) from {baseline_sum:.3f}s to {result_sum:.3f}s "
+            f"(~{sum_improvement_pct:.1f}% improvement)"
+        )
 
 
 def _max_decimal_places(rows):

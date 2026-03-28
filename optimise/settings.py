@@ -13,7 +13,7 @@ _REQUIRED_STRING_KEYS = ["target_repo", "branch", "optimisation_target", "instru
 
 # Keys that are converted to float
 _FLOAT_KEYS = [
-    "min_improvement_pct", "individual_regression_tradeoff",
+    "min_improvement_pct", "max_regression_pct",
     "benchmark_convergence_threshold_pct", "early_abort_pct",
 ]
 
@@ -136,9 +136,29 @@ def validate_settings(raw, script_repo):
     if "early_abort_pct" not in result:
         result["early_abort_pct"] = result.get("min_improvement_pct", 0.5)
 
+    # Default max_regression_pct
+    if "max_regression_pct" not in result:
+        result["max_regression_pct"] = 3.0
+
+    # Default targeting_mode and validate
+    targeting = result.get("targeting_mode", "overall")
+    if targeting not in ("overall", "least_improved_instance"):
+        raise SettingsError(
+            f"targeting_mode must be 'overall' or 'least_improved_instance', "
+            f"got: {targeting!r}"
+        )
+    result["targeting_mode"] = targeting
+
+    # Migration: reject old setting
+    if "individual_regression_tradeoff" in result:
+        raise SettingsError(
+            "individual_regression_tradeoff has been removed. "
+            "Replace it with max_regression_pct in your settings.conf."
+        )
+
     # Default llm_timeout
     if "llm_timeout" not in result:
-        result["llm_timeout"] = 600
+        result["llm_timeout"] = 3600
 
     return result
 
@@ -183,10 +203,15 @@ min_improvement_pct: 0.5
 # Defaults to min_improvement_pct if not set. Typically set lower.
 early_abort_pct: 0.5
 
-# If any individual row regresses, sum improvement must also be at least
-# this multiplier times the worst individual row regression percent.
-# 0 = ignore individual regressions; very large value = reject any regression.
-individual_regression_tradeoff: 2
+# Maximum allowed regression on the guard measure (percent).
+# In 'overall' mode: no individual instance may regress more than this.
+# In 'least_improved_instance' mode: sum(user) must not regress more than this.
+max_regression_pct: 3
+
+# Targeting mode: "overall" or "least_improved_instance".
+# overall: optimise sum(user) across all instances.
+# least_improved_instance: dynamically target the least-improved instance.
+targeting_mode: overall
 
 # === Benchmark Convergence ===
 # Number of warmup iterations (output discarded) before real measurement.
@@ -232,7 +257,7 @@ commit_scope: src/
 disabled_providers:
 
 # Maximum time (seconds) to wait for an LLM response before timing out.
-llm_timeout: 600
+llm_timeout: 3600
 """
 
 INSTRUCTIONS_TEMPLATE = """\

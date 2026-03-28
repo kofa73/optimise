@@ -139,10 +139,8 @@ min_improvement_pct: 0.5
 # Defaults to min_improvement_pct if not set. Typically set lower.
 early_abort_pct: 0.5
 
-# If any individual row regresses, sum improvement must also be at least
-# this multiplier times the worst individual row regression percent.
-# 0 = ignore individual regressions; very large value = reject any regression.
-individual_regression_tradeoff: 2
+# Maximum allowed regression on any individual instance (percent).
+max_regression_pct: 3
 
 # === Benchmark Convergence ===
 # Number of warmup iterations (output discarded) before real measurement.
@@ -380,12 +378,12 @@ improvement_pct = (baseline_sum - result_sum) / baseline_sum * 100
 if improvement_pct < min_improvement_pct:
     fail
 
-# Gate 2: individual regression tradeoff
+# Gate 2: individual instance regression cap
 max_row_regression_pct = max(
     (result_row - baseline_row) / baseline_row * 100
     for each row where result_row > baseline_row
 )
-if max_row_regression_pct > 0 and improvement_pct < individual_regression_tradeoff * max_row_regression_pct:
+if max_row_regression_pct > max_regression_pct:
     fail
 
 success

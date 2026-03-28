@@ -83,7 +83,7 @@ Commit the XMP change, idea moves, and fresh perf-logs directory.
 ## Acceptance Criteria (unchanged)
 
 - `min_improvement_pct: 1` on sum(user)
-- `individual_regression_tradeoff: 0.5`
+- `max_regression_pct: 3`
 - `early_abort_pct: -2`
 
 With equal weights, 1% threshold means ~2.1s improvement needed. A 10% speedup on any single preset (~1s) moves the sum by ~0.5%. An optimisation helping 2-3 presets will clear the bar.

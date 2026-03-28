@@ -127,7 +127,9 @@ from optimise.benchmark import (
 
 def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
                        num_warmup, convergence_threshold_pct,
-                       convergence_tail_runs, early_abort_pct):
+                       convergence_tail_runs, early_abort_pct,
+                       target_instance_index=None,
+                       target_instance_baseline=None):
     """Run the benchmark convergence loop.
 
     Returns element-wise best rows on success.
@@ -157,10 +159,20 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
         best = update_element_best(best, rows)
         current_sum = sum_user(best)
 
-        # Early abort on first real run: must already beat improvement threshold
+        # Early abort on first real run
         if run_idx == 1:
-            threshold = baseline_user_sum * (1 - early_abort_pct / 100)
-            if current_sum > threshold:
+            # Check sum(user) — applies in both modes
+            sum_threshold = baseline_user_sum * (1 - early_abort_pct / 100)
+            sum_exceeded = current_sum > sum_threshold
+
+            # Check targeted instance — only in instance mode
+            instance_exceeded = False
+            if target_instance_index is not None and target_instance_baseline is not None:
+                instance_time = best[target_instance_index]["user"]
+                instance_threshold = target_instance_baseline * (1 - early_abort_pct / 100)
+                instance_exceeded = instance_time > instance_threshold
+
+            if sum_exceeded or instance_exceeded:
                 improvement_pct = (1 - current_sum / baseline_user_sum) * 100
                 raise BenchmarkError(
                     f"Benchmark early abort: {current_sum:.3f}s vs "

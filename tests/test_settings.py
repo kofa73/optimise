@@ -78,7 +78,7 @@ class TestValidateSettings:
             "bench_cmd": "python bench.py",
             "quality_cmd": "",
             "min_improvement_pct": "0.5",
-            "individual_regression_tradeoff": "2",
+            "max_regression_pct": "3",
             "early_abort_pct": "10",
             "num_warmup_iterations": "0",
             "benchmark_convergence_threshold_pct": "0.1",
@@ -191,11 +191,11 @@ class TestValidateSettings:
         result = validate_settings(settings, script_repo=str(tmp_path))
         assert result["llm_timeout"] == 300
 
-    def test_llm_timeout_defaults_to_600(self, tmp_path):
+    def test_llm_timeout_defaults_to_3600(self, tmp_path):
         settings = self._make_valid_settings(tmp_path)
-        # Don't set llm_timeout — should default to 600
+        # Don't set llm_timeout — should default to 3600
         result = validate_settings(settings, script_repo=str(tmp_path))
-        assert result["llm_timeout"] == 600
+        assert result["llm_timeout"] == 3600
 
     def test_llm_timeout_invalid_raises(self, tmp_path):
         settings = self._make_valid_settings(tmp_path)
@@ -205,4 +205,39 @@ class TestValidateSettings:
 
     def test_llm_timeout_in_template(self):
         from optimise.settings import SETTINGS_TEMPLATE
-        assert "llm_timeout: 600" in SETTINGS_TEMPLATE
+        assert "llm_timeout: 3600" in SETTINGS_TEMPLATE
+
+    def test_max_regression_pct_parsed_as_float(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["max_regression_pct"] = "5.5"
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["max_regression_pct"] == 5.5
+
+    def test_max_regression_pct_defaults_to_3(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        del settings["max_regression_pct"]
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["max_regression_pct"] == 3
+
+    def test_targeting_mode_defaults_to_overall(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["targeting_mode"] == "overall"
+
+    def test_targeting_mode_least_improved_valid(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["targeting_mode"] = "least_improved_instance"
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["targeting_mode"] == "least_improved_instance"
+
+    def test_targeting_mode_invalid_raises(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["targeting_mode"] = "bogus"
+        with pytest.raises(SettingsError, match="targeting_mode"):
+            validate_settings(settings, script_repo=str(tmp_path))
+
+    def test_old_regression_tradeoff_raises_migration_error(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["individual_regression_tradeoff"] = "2"
+        with pytest.raises(SettingsError, match="individual_regression_tradeoff.*max_regression_pct"):
+            validate_settings(settings, script_repo=str(tmp_path))

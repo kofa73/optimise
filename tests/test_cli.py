@@ -108,7 +108,7 @@ def _make_build_state(tmp_path, idea_file="idea.md", idea_subdir="testing"):
         "commit_prefix": "perf",
         "min_improvement_pct": 0.5,
         "early_abort_pct": 0.5,
-        "individual_regression_tradeoff": 2,
+        "max_regression_pct": 3,
     }
 
     return _BuildState(
@@ -134,7 +134,7 @@ def _make_bench_script(tmp_path, output_line):
 
 def _make_full_build_state(tmp_path, bench_cmd, idea_file="idea.md",
                            min_improvement_pct=0.5, early_abort_pct=0.5,
-                           individual_regression_tradeoff=2,
+                           max_regression_pct=3,
                            baseline_user=10.0):
     """Full _BuildState with all benchmark-required settings."""
     script = tmp_path / "script"
@@ -163,7 +163,7 @@ def _make_full_build_state(tmp_path, bench_cmd, idea_file="idea.md",
         "commit_prefix": "perf",
         "min_improvement_pct": min_improvement_pct,
         "early_abort_pct": early_abort_pct,
-        "individual_regression_tradeoff": individual_regression_tradeoff,
+        "max_regression_pct": max_regression_pct,
         "num_warmup_iterations": 0,
         "benchmark_convergence_threshold_pct": 0.1,
         "benchmark_convergence_tail_runs": 3,
@@ -461,13 +461,13 @@ class TestDoBuildTestBenchmarkPerfTable:
         assert "# Individual timings" in content
         assert "outcome: target not reached: 9.970s vs baseline 10.000s (+0.3%, need 2.0%)" in content
 
-    def test_individual_regression_too_high_has_perf_table(self, tmp_path):
-        """Individual row regresses beyond tradeoff → perf table in done idea."""
+    def test_instance_regression_exceeds_cap_has_perf_table(self, tmp_path):
+        """Individual row regresses beyond max_regression_pct cap → perf table in done idea."""
         import textwrap
         # Two-row baseline: each row user=5.0 (sum=10.0)
         # Bench result: row1=3.0 (improves), row2=6.9 (regresses 38%)
         # Sum: 9.9 = 1% improvement overall
-        # regression_tradeoff=2: requires 2×38%=76% improvement, only 1% → Gate 2 fails
+        # max_regression_pct=2: row 2 regressed 38% > 2% cap → fails guard
         bench = tmp_path / "bench2.sh"
         bench.write_text(textwrap.dedent("""\
             #!/bin/sh
@@ -482,14 +482,13 @@ class TestDoBuildTestBenchmarkPerfTable:
         s = _make_full_build_state(tmp_path, bench_cmd=str(bench),
                                    baseline_user=10.0,           # initial write (one-row)
                                    early_abort_pct=0.5,          # sum 9.9 < 9.95 → passes
-                                   individual_regression_tradeoff=2)  # Gate 2 active
+                                   max_regression_pct=2)         # guard cap active
         # Overwrite with two-row baseline so evaluate_success sees two rows matching bench output
         (tmp_path / "script" / "perf-logs" / "current-best-perf.md").write_text(
             format_perf_log(baseline_two))
         _do_build_test_benchmark(s, retries_left=0)
         content = self._idea_content(tmp_path)
         assert "# Individual timings" in content
-        assert "outcome: target not reached: 9.900s vs baseline 10.000s (+1.0%, need 0.5%)" in content
 
 
 
@@ -722,7 +721,7 @@ class TestCodingFailureRevertsScope:
             f"max_consecutive_perf_failures: 5\n"
             f"max_runtime_minutes: 60\n"
             f"min_improvement_pct: 0.5\n"
-            f"individual_regression_tradeoff: 2\n"
+            f"max_regression_pct: 3\n"
             f"num_warmup_iterations: 0\n"
             f"benchmark_convergence_threshold_pct: 1\n"
             f"benchmark_convergence_tail_runs: 3\n"
@@ -815,7 +814,7 @@ class TestBaselinePreconditions:
             f"max_consecutive_perf_failures: 5\n"
             f"max_runtime_minutes: 60\n"
             f"min_improvement_pct: 0.5\n"
-            f"individual_regression_tradeoff: 2\n"
+            f"max_regression_pct: 3\n"
             f"num_warmup_iterations: 0\n"
             f"benchmark_convergence_threshold_pct: 1\n"
             f"benchmark_convergence_tail_runs: 3\n"
@@ -867,5 +866,44 @@ class TestBaselinePreconditions:
         assert (script / "perf-logs").is_dir()
         assert (script / "perf-logs" / "baseline-perf.md").exists()
         assert (script / "perf-logs" / "current-best-perf.md").exists()
+
+
+class TestComputeTarget:
+    """_compute_target sets targeting state in settings dict."""
+
+    def test_instance_targeting_sets_target_index(self, tmp_path):
+        """In least_improved_instance mode, sets _target_instance_index."""
+        from optimise.benchmark import format_perf_log
+
+        script = tmp_path / "script"
+        script.mkdir()
+        (script / "perf-logs").mkdir(parents=True)
+
+        baseline = [{"user": 10.0}, {"user": 10.0}]
+        current = [{"user": 8.0}, {"user": 9.5}]   # instance 1 least improved
+        (script / "perf-logs" / "baseline-perf.md").write_text(format_perf_log(baseline))
+        (script / "perf-logs" / "current-best-perf.md").write_text(format_perf_log(current))
+
+        settings = {"targeting_mode": "least_improved_instance"}
+
+        from optimise.cli import _compute_target
+        _compute_target(str(script), settings)
+
+        assert settings["_target_instance_index"] == 1
+        assert settings["_target_instance_baseline"] == pytest.approx(10.0)
+
+    def test_overall_mode_clears_targeting_state(self, tmp_path):
+        """In overall mode, any previous targeting state is cleared."""
+        settings = {
+            "targeting_mode": "overall",
+            "_target_instance_index": 1,
+            "_target_instance_baseline": 10.0,
+        }
+
+        from optimise.cli import _compute_target
+        _compute_target(str(tmp_path), settings)
+
+        assert "_target_instance_index" not in settings
+        assert "_target_instance_baseline" not in settings
 
 

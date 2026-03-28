@@ -216,7 +216,7 @@ class TestValidateSettings:
             "bench_cmd": "python bench.py",
             "quality_cmd": "",
             "min_improvement_pct": "0.5",
-            "individual_regression_tradeoff": "2",
+            "max_regression_pct": "2",
             "early_abort_regression_pct": "10",
             "num_warmup_iterations": "0",
             "benchmark_convergence_threshold_pct": "0.1",
@@ -326,7 +326,7 @@ _REQUIRED_STRING_KEYS = ["target_repo", "branch", "optimisation_target", "instru
 
 # Keys that are converted to float
 _FLOAT_KEYS = [
-    "min_improvement_pct", "individual_regression_tradeoff",
+    "min_improvement_pct", "max_regression_pct",
     "early_abort_regression_pct", "benchmark_convergence_threshold_pct",
 ]
 
@@ -472,7 +472,7 @@ min_improvement_pct: 0.5
 # If any individual row regresses, sum improvement must also be at least
 # this multiplier times the worst individual row regression percent.
 # 0 = ignore individual regressions; very large value = reject any regression.
-individual_regression_tradeoff: 2
+max_regression_pct: 2
 
 # Abort benchmark early if first real run regresses by more than this (percent).
 early_abort_regression_pct: 10
@@ -3565,7 +3565,7 @@ def _do_build_test_benchmark(s, retries_left):
     ok, improvement_pct, detail = evaluate_success(
         baseline_rows, best,
         s.settings["min_improvement_pct"],
-        s.settings["individual_regression_tradeoff"],
+        s.settings["max_regression_pct"],
     )
 
     # Save perf log for this idea

@@ -59,7 +59,8 @@ from optimise.state import (
     all_idea_titles, clean_errors, sanitise_filename,
 )
 from optimise.benchmark import (
-    format_perf_log, parse_perf_log, evaluate_success, sum_user, BenchmarkError,
+    format_perf_log, parse_perf_log, evaluate_success, sum_user,
+    find_least_improved_instance, BenchmarkError,
 )
 from optimise.prompts import (
     build_generation_prompt,
@@ -68,6 +69,36 @@ from optimise.prompts import (
 
 
 import enum
+
+
+def _compute_target(directory, settings):
+    """Set targeting runtime state in settings dict.
+
+    For 'least_improved_instance' mode, reads baseline and current-best
+    perf logs and identifies the least-improved instance.
+    For 'overall' mode, clears any previous targeting state.
+    """
+    if settings.get("targeting_mode") != "least_improved_instance":
+        settings.pop("_target_instance_index", None)
+        settings.pop("_target_instance_baseline", None)
+        return
+
+    baseline_path = os.path.join(directory, "perf-logs", "baseline-perf.md")
+    current_path = os.path.join(directory, "perf-logs", "current-best-perf.md")
+    with open(baseline_path) as f:
+        baseline_rows = parse_perf_log(f.read())
+    with open(current_path) as f:
+        current_rows = parse_perf_log(f.read())
+
+    target = find_least_improved_instance(baseline_rows, current_rows)
+    settings["_target_instance_index"] = target["index"]
+    settings["_target_instance_baseline"] = target["baseline_user"]
+
+    log.info(
+        f"[TARGET] Instance {target['index']}: "
+        f"{target['baseline_user']:.3f}s -> {target['current_user']:.3f}s "
+        f"({target['improvement_pct']:+.1f}% improvement, least improved)"
+    )
 
 
 def _read_learnings(directory):
@@ -226,6 +257,7 @@ def do_run(directory):
 
         if state == StartupState.GENERATE:
             log.info("--- Starting idea generation ---")
+            _compute_target(directory, settings)
             todo_files = list_ideas(directory, "todo")
             if not todo_files:
                 if list_ideas(directory, "done"):
@@ -460,6 +492,8 @@ def _do_build_test_benchmark(s, retries_left):
             convergence_threshold_pct=s.settings["benchmark_convergence_threshold_pct"],
             convergence_tail_runs=s.settings["benchmark_convergence_tail_runs"],
             early_abort_pct=s.settings["early_abort_pct"],
+            target_instance_index=s.settings.get("_target_instance_index"),
+            target_instance_baseline=s.settings.get("_target_instance_baseline"),
         )
     except BenchmarkError as e:
         log.error(f"Benchmark error: {e}")
@@ -472,7 +506,9 @@ def _do_build_test_benchmark(s, retries_left):
     ok, improvement_pct, detail = evaluate_success(
         baseline_rows, best,
         s.settings["min_improvement_pct"],
-        s.settings["individual_regression_tradeoff"],
+        s.settings["max_regression_pct"],
+        targeting_mode=s.settings.get("targeting_mode", "overall"),
+        target_instance_index=s.settings.get("_target_instance_index"),
     )
 
     if ok:
