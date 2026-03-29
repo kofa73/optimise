@@ -241,3 +241,18 @@ class TestValidateSettings:
         settings["individual_regression_tradeoff"] = "2"
         with pytest.raises(SettingsError, match="individual_regression_tradeoff.*max_regression_pct"):
             validate_settings(settings, script_repo=str(tmp_path))
+
+    def test_providers_retry_limit_parsed_as_int(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["providers_retry_limit"] = "5"
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["providers_retry_limit"] == 5
+
+    def test_providers_retry_limit_defaults_to_0(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["providers_retry_limit"] == 0
+
+    def test_providers_retry_limit_in_template(self):
+        from optimise.settings import SETTINGS_TEMPLATE
+        assert "providers_retry_limit:" in SETTINGS_TEMPLATE

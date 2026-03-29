@@ -22,6 +22,7 @@ _INT_KEYS = [
     "num_warmup_iterations", "benchmark_convergence_tail_runs",
     "max_retries", "max_iterations", "max_consecutive_perf_failures",
     "max_runtime_minutes", "idea_generation_batch_size", "llm_timeout",
+    "providers_retry_limit",
 ]
 
 
@@ -160,6 +161,10 @@ def validate_settings(raw, script_repo):
     if "llm_timeout" not in result:
         result["llm_timeout"] = 3600
 
+    # Default providers_retry_limit
+    if "providers_retry_limit" not in result:
+        result["providers_retry_limit"] = 0
+
     return result
 
 
@@ -258,6 +263,11 @@ disabled_providers:
 
 # Maximum time (seconds) to wait for an LLM response before timing out.
 llm_timeout: 3600
+
+# How many times to retry after all providers fail in a single call.
+# Each retry waits 2 hours for provider quota to reset.
+# 0 = fail immediately (useful for testing). Set high for unattended runs.
+providers_retry_limit: 1000
 """
 
 INSTRUCTIONS_TEMPLATE = """\
