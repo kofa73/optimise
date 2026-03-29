@@ -183,7 +183,10 @@ def do_run(directory):
         sys.exit(1)
 
     # AI router
-    ai = AIRouter(disabled_providers=settings.get("disabled_providers", []))
+    ai = AIRouter(
+        disabled_providers=settings.get("disabled_providers", []),
+        providers_retry_limit=settings.get("providers_retry_limit", 0),
+    )
 
     # Startup recovery
     startup = determine_startup_state(directory, target_repo_path, settings)
