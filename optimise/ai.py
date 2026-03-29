@@ -67,7 +67,8 @@ def get_version(provider_name):
 class AIRouter:
     """Routes AI calls to claude/gemini with failover."""
 
-    def __init__(self, providers=None, disabled_providers=None):
+    def __init__(self, providers=None, disabled_providers=None,
+                 providers_retry_limit=0):
         available = []
         self.version_warnings = {}  # provider -> warning message
         permanently_disabled = set(disabled_providers or [])
@@ -94,6 +95,7 @@ class AIRouter:
         self.available_providers = list(available)
         self.providers = list(available)
         self._last_call_finish_time = {name: 0 for name in available}
+        self.providers_retry_limit = providers_retry_limit
 
     def _check_version(self, name):
         """Compare installed version against built_with and warn on mismatch."""
@@ -122,18 +124,26 @@ class AIRouter:
         return len(self.providers) > 0
 
     def call(self, prompt, tier="best", timeout=600, allow_edits=False,
-             cwd=None, provider_override=None, purpose=None):
-        """Call an AI provider. Retries indefinitely with wait on full exhaustion.
+             cwd=None, purpose=None):
+        """Call an AI provider with bounded retry on full exhaustion.
 
         Returns (stdout, exit_code, provider_name).
         """
+        retries_used = 0
         while True:
-            provider_name = provider_override or (
+            provider_name = (
                 random.choice(self.providers) if self.providers else None
             )
 
             if provider_name is None:
-                log.warning("All AI providers exhausted. Waiting 2 hours...")
+                if retries_used >= self.providers_retry_limit:
+                    log.error("All AI providers failed during this call")
+                    return "", 1, None
+                retries_used += 1
+                log.warning(
+                    f"All AI providers exhausted (retry {retries_used}"
+                    f"/{self.providers_retry_limit}). Waiting 2 hours..."
+                )
                 time.sleep(7200)
                 self.reset_providers()
                 continue
@@ -159,11 +169,7 @@ class AIRouter:
                     "If the error persists, consider updating the script by "
                     "showing the error and this warning to a coding agent."
                 )
-            if not provider_override:
-                self.disable_provider(provider_name)
-            else:
-                log.warning(f"Override provider {provider_name} failed. Waiting...")
-                time.sleep(300)
+            self.disable_provider(provider_name)
 
     def _invoke(self, provider_name, prompt, tier, timeout, allow_edits, cwd,
                 purpose=None):

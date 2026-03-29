@@ -149,15 +149,13 @@ class TestVersionWarnings:
     def test_version_warning_repeated_on_failure(self, mock_run, mock_which,
                                                   mock_ver, caplog):
         router = AIRouter(providers=["claude", "gemini"])
-        with patch("time.sleep"):
-            mock_run.side_effect = [
-                MagicMock(stdout="", returncode=1),
-                MagicMock(stdout="", returncode=1),
-                MagicMock(stdout="ok", returncode=0),
-            ]
-            import logging
-            with caplog.at_level(logging.WARNING):
-                router.call("test", allow_edits=False)
+        mock_run.side_effect = [
+            MagicMock(stdout="", returncode=1),
+            MagicMock(stdout="", returncode=1),
+        ]
+        import logging
+        with caplog.at_level(logging.WARNING):
+            router.call("test", allow_edits=False)
         assert any("consider updating the script" in r.message for r in caplog.records)
 
 
@@ -215,23 +213,74 @@ class TestAIRouter:
         assert rc == 0
         assert provider == "claude"
 
+    @patch("optimise.ai.get_version", return_value=None)
     @patch("shutil.which", return_value="/usr/bin/fake")
     @patch("subprocess.run")
-    def test_call_disables_on_failure(self, mock_run, mock_which):
-        mock_run.return_value = MagicMock(stdout="", returncode=1)
+    def test_call_disables_on_failure(self, mock_run, mock_which, mock_ver):
         router = AIRouter(providers=["claude", "gemini"])
-        # Both will fail; after two failures it should wait
-        # We don't want to actually wait 300s in tests, so mock time.sleep
-        with patch("time.sleep"):
-            # Call with a timeout to prevent infinite loop
-            mock_run.side_effect = [
-                MagicMock(stdout="", returncode=1),  # first provider fails
-                MagicMock(stdout="", returncode=1),  # second provider fails
-                MagicMock(stdout="ok", returncode=0),  # retry succeeds
-            ]
+        mock_run.side_effect = [
+            MagicMock(stdout="", returncode=1),
+            MagicMock(stdout="", returncode=1),
+        ]
+        stdout, rc, provider = router.call("test", allow_edits=False)
+        assert stdout == ""
+        assert rc == 1
+        assert provider is None
+        assert mock_run.call_count == 2
+
+
+class TestProvidersRetryLimit:
+    @patch("shutil.which", return_value="/usr/bin/fake")
+    @patch("subprocess.run")
+    def test_retry_limit_zero_fails_after_one_cycle(self, mock_run, mock_which):
+        """retry_limit=0: exhaust all providers once, then fail immediately."""
+        router = AIRouter(providers=["claude", "gemini"], providers_retry_limit=0)
+        mock_run.side_effect = [
+            MagicMock(stdout="", returncode=1),
+            MagicMock(stdout="", returncode=1),
+        ]
+        with patch("time.sleep") as mock_sleep:
+            stdout, rc, provider = router.call("test", allow_edits=False)
+        assert stdout == ""
+        assert rc == 1
+        assert provider is None
+        mock_sleep.assert_not_called()
+
+    @patch("optimise.ai.get_version", return_value=None)
+    @patch("shutil.which", return_value="/usr/bin/fake")
+    @patch("subprocess.run")
+    def test_retry_limit_two_retries_then_fails(self, mock_run, mock_which,
+                                                 mock_ver):
+        """retry_limit=2: 3 total cycles (initial + 2 retries), all fail."""
+        router = AIRouter(providers=["claude"], providers_retry_limit=2)
+        mock_run.return_value = MagicMock(stdout="", returncode=1)
+        with patch("time.sleep") as mock_sleep:
+            stdout, rc, provider = router.call("test", allow_edits=False)
+        assert stdout == ""
+        assert rc == 1
+        assert provider is None
+        # 2 retries × 1 sleep(7200) each
+        sleep_calls = [c for c in mock_sleep.call_args_list if c[0][0] == 7200]
+        assert len(sleep_calls) == 2
+        # 3 total cycles × 1 provider = 3 invoke calls
+        assert mock_run.call_count == 3
+
+    @patch("shutil.which", return_value="/usr/bin/fake")
+    @patch("subprocess.run")
+    def test_retry_limit_success_on_retry(self, mock_run, mock_which):
+        """retry_limit=1: first cycle fails, retry succeeds."""
+        router = AIRouter(providers=["claude"], providers_retry_limit=1)
+        mock_run.side_effect = [
+            MagicMock(stdout="", returncode=1),   # first cycle: fail
+            MagicMock(stdout="ok", returncode=0),  # retry cycle: success
+        ]
+        with patch("time.sleep") as mock_sleep:
             stdout, rc, provider = router.call("test", allow_edits=False)
         assert stdout == "ok"
         assert rc == 0
+        assert provider == "claude"
+        sleep_calls = [c for c in mock_sleep.call_args_list if c[0][0] == 7200]
+        assert len(sleep_calls) == 1
 
 
 class TestCallPurpose:
@@ -291,7 +340,7 @@ class TestRateLimiting:
         with patch("time.time", return_value=now), \
              patch("time.sleep") as mock_sleep, \
              patch("random.uniform", return_value=75.0) as mock_rand:
-            router.call("test", allow_edits=False, provider_override="claude")
+            router.call("test", allow_edits=False)
             mock_rand.assert_called_once_with(30, 120)
             mock_sleep.assert_called_once_with(75.0)
 
@@ -305,7 +354,7 @@ class TestRateLimiting:
         router._last_call_finish_time["claude"] = now - 120  # 120s ago
         with patch("time.time", return_value=now), \
              patch("time.sleep") as mock_sleep:
-            router.call("test", allow_edits=False, provider_override="claude")
+            router.call("test", allow_edits=False)
         mock_sleep.assert_not_called()
 
     @patch("shutil.which", return_value="/usr/bin/claude")
@@ -314,7 +363,7 @@ class TestRateLimiting:
         mock_run.return_value = MagicMock(stdout="ok", returncode=0)
         router = AIRouter(providers=["claude"])
         with patch("time.time", return_value=5000.0):
-            router.call("test", allow_edits=False, provider_override="claude")
+            router.call("test", allow_edits=False)
         assert router._last_call_finish_time["claude"] == 5000.0
 
     @patch("shutil.which", return_value="/usr/bin/claude")
@@ -329,5 +378,5 @@ class TestRateLimiting:
              patch("time.sleep"), \
              patch("random.uniform", return_value=60.0), \
              caplog.at_level(logging.INFO):
-            router.call("test", allow_edits=False, provider_override="claude")
+            router.call("test", allow_edits=False)
         assert any("cooling off" in r.message.lower() for r in caplog.records)
