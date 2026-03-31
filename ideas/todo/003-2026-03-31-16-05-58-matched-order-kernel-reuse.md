@@ -1,3 +1,0 @@
-perf: reuse identical gradient and laplacian kernels across matched order pairs
-
-When two orders have the same anisotropy factor and isotropy mode, build the local kernel once and reuse it for both consumers instead of calling `compute_kernel()` twice. In the strong instance, orders 1 and 3 share the same gradient-driven kernel, and orders 2 and 4 share the same laplacian-driven kernel, so this removes duplicate per-pixel kernel construction without the register-pressure risk of fully fusing the later convolution loops.

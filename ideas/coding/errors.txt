@@ -1,3 +1,0 @@
-Code review failed:
-
-Macro misuse in [src/iop/diffuse.c](/workspace/optimiser/src/iop/diffuse.c): `DISPATCH_ALL_ISOPHOTE_MATCHED_LOOP` is a large control-flow macro with nested branching and repeated dispatch logic. That fits the “giant body macro” pattern the project instructions forbid; it should be a `static inline` helper or a small set of specialized functions instead.
