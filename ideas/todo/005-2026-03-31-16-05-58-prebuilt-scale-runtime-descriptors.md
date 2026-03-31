@@ -1,3 +1,0 @@
-perf: prebuild per-scale runtime descriptors across outer iterations
-
-Build a compact descriptor array once before the outer `for(it ...)` loop, containing each scale’s `mult`, `current_radius_square`, `ABCD`, `strength`, and the selected CPU PDE helper, then pass that into `wavelets_process()`. The strong benchmark repeats the same scale setup 20 times, so moving this invariant dispatch/setup work out of the iteration path should tighten the CPU-side control flow without changing the algorithm.
