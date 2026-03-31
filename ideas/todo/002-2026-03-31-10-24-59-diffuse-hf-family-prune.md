@@ -1,0 +1,3 @@
+perf: prune the unused LF-gradient derivative family on HF-only masked scales
+
+Add a small active-family descriptor in `wavelets_process` that tells `heat_PDE_diffusion` whether the LF-gradient side, the HF-laplacian side, or both are needed. For the benchmark preset only the fourth-order HF path matters, so the LF gradient fetch/normalize path, its unused `dt_vector_exp` calls, and its unused kernel/derivative accumulations can be skipped entirely. This is a focused reduction of expensive setup work, not a broad rewrite of the pixel body.

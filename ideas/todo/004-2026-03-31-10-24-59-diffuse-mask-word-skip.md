@@ -1,0 +1,3 @@
+perf: skip mixed-row clear regions a word at a time with packed mask words
+
+Store the inpaint mask as packed `uint64_t` words and process mixed rows a word at a time. Zero words can take a tight `HF + LF` copy loop for 64 pixels, while non-zero words fall back to the existing pixel-wise PDE logic. This reduces mask bandwidth across many iterations and scales and avoids the extra indirection cost that made more general sparse-span approaches unattractive.
