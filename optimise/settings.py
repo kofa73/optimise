@@ -9,7 +9,8 @@ class SettingsError(Exception):
 
 
 # Keys that must have non-empty string values
-_REQUIRED_STRING_KEYS = ["target_repo", "branch", "optimisation_target", "instructions", "build_cmd", "bench_cmd"]
+_REQUIRED_STRING_KEYS = ["target_repo", "branch", "optimisation_target", "instructions", "build_cmd", "bench_cmd",
+                         "bench_image", "bench_sidecar", "module_name"]
 
 # Keys that are converted to float
 _FLOAT_KEYS = [
@@ -46,7 +47,7 @@ def parse_settings(path):
                 val = m.group(2).strip()
                 if key == "disabled_providers":
                     providers = [p.strip() for p in val.split(",") if p.strip()]
-                    unknown = [p for p in providers if p not in ("claude", "gemini")]
+                    unknown = [p for p in providers if p not in ("claude", "gemini", "codex")]
                     if unknown:
                         raise SettingsError(f"Line {line_num}: Unknown provider(s) in disabled_providers: {', '.join(unknown)}")
                     config[key] = providers
@@ -104,6 +105,31 @@ def validate_settings(raw, script_repo):
     if not os.path.isfile(instr_path):
         raise SettingsError(f"instructions file not found: {result['instructions']}")
     result["instructions"] = instr_path
+
+    # Validate bench_image path
+    bench_image = result.get("bench_image", "")
+    if bench_image and not os.path.isabs(bench_image):
+        bench_image = os.path.join(script_repo, bench_image)
+    if not os.path.isfile(bench_image):
+        raise SettingsError(f"bench_image file not found: {result['bench_image']}")
+    result["bench_image"] = bench_image
+
+    # Validate bench_sidecar path
+    bench_sidecar = result.get("bench_sidecar", "")
+    if bench_sidecar and not os.path.isabs(bench_sidecar):
+        bench_sidecar = os.path.join(script_repo, bench_sidecar)
+    if not os.path.isfile(bench_sidecar):
+        raise SettingsError(f"bench_sidecar file not found: {result['bench_sidecar']}")
+    result["bench_sidecar"] = bench_sidecar
+
+    # Validate module_name against known modules
+    from optimise.xmp import KNOWN_MODULES
+    module_name = result.get("module_name", "")
+    if module_name not in KNOWN_MODULES:
+        raise SettingsError(
+            f"module_name must be one of {sorted(KNOWN_MODULES.keys())}, "
+            f"got: {module_name!r}"
+        )
 
     # Convert numeric values
     for key in _FLOAT_KEYS:
@@ -198,6 +224,16 @@ quality_cmd:
 # 'user' is mandatory on every line; other labels are informational.
 bench_cmd: <command to run performance benchmark>
 
+# Benchmark input image path, relative to this script repo.
+bench_image: <path to benchmark image file>
+
+# XMP sidecar file, relative to this script repo.
+# Used to identify module instances and decode their parameters.
+bench_sidecar: <path to XMP sidecar file>
+
+# darktable module name to optimise (e.g., diffuse).
+module_name: <module name>
+
 # === Performance Thresholds ===
 # Minimum sum(user) improvement to accept a change (percent).
 # Changes below this are treated as noise and reverted.
@@ -257,7 +293,7 @@ commit_prefix: perf
 commit_scope: src/
 
 # === AI Providers ===
-# Supported providers: claude, gemini
+# Supported providers: claude, gemini, codex
 # Comma-separated list of providers to permanently disable.
 disabled_providers:
 

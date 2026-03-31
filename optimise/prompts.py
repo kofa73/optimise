@@ -2,7 +2,28 @@
 """Prompt builders for each LLM role."""
 
 
-def build_generation_prompt(instructions, learnings, existing_titles, count, target_files):
+def _targeting_section(targeting, focus_line):
+    """Build the instance targeting prompt section, or empty string."""
+    if not targeting:
+        return ""
+    return f"""
+# Instance targeting
+
+The benchmark runs {targeting['instance_count']} instances of the "{targeting['module_name']}" module. \
+Instance {targeting['index']} ("{targeting['label']}") has improved the least \
+({targeting['improvement_pct']:+.1f}% vs average {targeting['avg_improvement_pct']:+.1f}%).
+
+Baseline: {targeting['baseline_user']:.3f}s, current best: {targeting['current_user']:.3f}s
+
+Parameters for this instance:
+{targeting['params_text']}
+
+{focus_line}
+"""
+
+
+def build_generation_prompt(instructions, learnings, existing_titles, count, target_files,
+                            targeting=None):
     """Build prompt for batch idea generation.
 
     The LLM should read the target files to understand the code, then propose
@@ -10,6 +31,9 @@ def build_generation_prompt(instructions, learnings, existing_titles, count, tar
     """
     targets = ", ".join(f"`{t}`" for t in target_files)
     existing = "\n".join(f"- {t}" for t in existing_titles) if existing_titles else "(none yet)"
+
+    targeting_block = _targeting_section(
+        targeting, "Focus your ideas on code paths that would improve performance for these parameters.")
 
     return f"""\
 # Instructions
@@ -23,7 +47,7 @@ Read these files to understand the code: {targets}
 # Learnings from past experiments
 
 {learnings}
-
+{targeting_block}
 # Existing ideas (do NOT repeat these)
 
 {existing}
@@ -50,7 +74,8 @@ Rules:
 
 
 
-def build_implementation_prompt(instructions, learnings, idea_content, target_files, errors):
+def build_implementation_prompt(instructions, learnings, idea_content, target_files, errors,
+                                targeting=None):
     """Build prompt for implementing an optimisation idea.
 
     Contains at least three separate, strong prohibitions against running
@@ -71,6 +96,9 @@ You MUST fix these errors. Here is the build/test output:
 ```
 """
 
+    targeting_block = _targeting_section(
+        targeting, "Prioritise code paths exercised by these parameters.")
+
     return f"""\
 # Instructions
 
@@ -79,7 +107,7 @@ You MUST fix these errors. Here is the build/test output:
 # Learnings from past experiments
 
 {learnings}
-
+{targeting_block}
 # Your task
 
 Implement this optimisation idea by editing the target files ({targets}):
@@ -142,11 +170,17 @@ Check ONLY these items:
 
 1. **Stale comments**: Are there comments in the diff that no longer describe the code
    they annotate? This includes comments left behind after removing or changing code.
-2. **Macro misuse**: Were large macros introduced? Large code blocks should use
-   `static inline` functions with `__attribute__((always_inline))` instead of macros.
+2. **Macro misuse**: Were large macros introduced? Avoid giant body macros, but do
+   not approve a refactor just because it replaced a macro with inline functions.
 3. **Unswitched duplication**: Is there duplicated code from loop unswitching that
    should be factored into separate `always_inline` helper functions?
-4. **OpenCL contamination**: Were any `_cl` functions or OpenCL-only code paths
+4. **Specialization-boundary regressions**: Did the change replace specialized outer
+   dispatch or macro expansion with one generic helper that now contains `DT_OMP_FOR()`
+   or the parallel row loop while taking hot-path flags as ordinary parameters? Did it
+   collapse many unswitched entry paths into one runtime-branching loop? Reject such
+   changes. The safe pattern is shared `always_inline` inner helpers plus small
+   specialized wrapper functions at the parallel-loop boundary.
+5. **OpenCL contamination**: Were any `_cl` functions or OpenCL-only code paths
    modified? The CPU benchmark does not test those paths, so they must not be changed
    unless the change is trivially required by a shared-code refactor.
 

@@ -16,6 +16,31 @@ class TestProviderCommands:
         cmd = PROVIDERS["gemini"]["cmd_edit"]("pro")
         assert "-p" in cmd, "gemini edit cmd must use -p for non-interactive mode"
 
+    def test_codex_text_uses_exec_and_sandbox(self):
+        cmd = PROVIDERS["codex"]["cmd_text"]("gpt-5.4")
+        assert cmd[:2] == ["codex", "exec"], "codex text cmd must use 'codex exec'"
+        assert "--model" in cmd
+        assert "gpt-5.4" in cmd
+        assert "--sandbox" in cmd
+        assert "read-only" in cmd
+        assert cmd[-1] == "-", "trailing '-' for stdin"
+
+    def test_codex_edit_uses_exec_and_yolo(self):
+        cmd = PROVIDERS["codex"]["cmd_edit"]("gpt-5.4")
+        assert cmd[:2] == ["codex", "exec"], "codex edit cmd must use 'codex exec'"
+        assert "--model" in cmd
+        assert "gpt-5.4" in cmd
+        assert "--dangerously-bypass-approvals-and-sandbox" in cmd
+        assert cmd[-1] == "-", "trailing '-' for stdin"
+        assert "--sandbox" not in cmd, "yolo flag replaces sandbox"
+
+    def test_codex_uses_stdin(self):
+        assert PROVIDERS["codex"]["uses_stdin"] is True
+
+    def test_codex_models(self):
+        assert PROVIDERS["codex"]["models"]["best"] == "gpt-5.4"
+        assert PROVIDERS["codex"]["models"]["normal"] == "gpt-5.4-mini"
+
 
 @pytest.mark.skipif(
     not shutil.which("gemini"),
@@ -95,6 +120,45 @@ class TestClaudeIntegration:
         )
 
 
+@pytest.mark.skipif(
+    not shutil.which("codex"),
+    reason="codex CLI not installed",
+)
+class TestCodexIntegration:
+    """Integration tests that invoke the real codex CLI."""
+
+    def test_codex_edits_file_and_exits(self, tmp_path):
+        """Codex should edit a file in non-interactive mode and exit cleanly."""
+        target = tmp_path / "greet.py"
+        target.write_text("# TODO: make this print hello\n")
+
+        prompt = (
+            "Edit the file greet.py so that when executed with `python3 greet.py` "
+            "it prints exactly the word hello on a single line and nothing else. "
+            "Do not add any other output. The file must contain only what is needed "
+            "to print the single word hello."
+        )
+
+        router = AIRouter(providers=["codex"])
+        stdout, rc, provider = router.call(
+            prompt,
+            tier="normal",
+            timeout=120,
+            allow_edits=True,
+            cwd=str(tmp_path),
+        )
+        assert rc == 0, f"codex exited with rc={rc}"
+
+        result = subprocess.run(
+            ["python3", str(target)],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode == 0, f"greet.py failed: {result.stderr}"
+        assert result.stdout.strip() == "hello", (
+            f"Expected 'hello', got: {result.stdout.strip()!r}"
+        )
+
+
 class TestGetVersion:
     @patch("subprocess.run")
     def test_get_version_claude(self, mock_run):
@@ -107,6 +171,12 @@ class TestGetVersion:
         mock_run.return_value = MagicMock(
             stdout="0.34.0\n", returncode=0)
         assert get_version("gemini") == "0.34.0"
+
+    @patch("subprocess.run")
+    def test_get_version_codex(self, mock_run):
+        mock_run.return_value = MagicMock(
+            stdout="codex-cli 0.117.0\n", returncode=0)
+        assert get_version("codex") == "0.117.0"
 
     @patch("subprocess.run")
     def test_get_version_returns_none_on_failure(self, mock_run):

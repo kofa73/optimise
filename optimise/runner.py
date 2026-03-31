@@ -129,17 +129,22 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
                        num_warmup, convergence_threshold_pct,
                        convergence_tail_runs, early_abort_pct,
                        target_instance_index=None,
-                       target_instance_baseline=None):
+                       target_instance_baseline=None,
+                       bench_image=None, bench_sidecar=None):
     """Run the benchmark convergence loop.
 
     Returns element-wise best rows on success.
     Raises BenchmarkError on early abort or parse failure.
     """
+    full_cmd = bench_cmd
+    if bench_image and bench_sidecar:
+        full_cmd = f"{bench_cmd} {bench_image} {bench_sidecar}"
+
     # Warmup
     for i in range(num_warmup):
         log.info(f"BENCH warmup {i+1}/{num_warmup}")
         subprocess.run(
-            bench_cmd, shell=True,
+            full_cmd, shell=True,
             capture_output=True, text=True, cwd=cwd,
         )
 
@@ -152,7 +157,7 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
         log.info(f"BENCH run {run_idx}")
 
         result = subprocess.run(
-            bench_cmd, shell=True,
+            full_cmd, shell=True,
             capture_output=True, text=True, cwd=cwd,
         )
         rows = parse_bench_output(result.stdout)

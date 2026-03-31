@@ -170,6 +170,8 @@ def _make_full_build_state(tmp_path, bench_cmd, idea_file="idea.md",
         "bench_cmd": bench_cmd,
         "quality_cmd": "",
         "commit_scope": ["src/"],
+        "bench_image": "/tmp/test.NEF",
+        "bench_sidecar": "/tmp/test.xmp",
     }
 
     return _BuildState(
@@ -531,15 +533,17 @@ class TestDoCommand:
         
         s = _make_full_build_state(tmp_path, bench_cmd="echo")
         settings_path = tmp_path / "script" / "settings.conf"
-        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbench_cmd: echo\nbuild_cmd: echo BUILD_RUN\noptimisation_target: src.c\ncommit_scope: src/\n")
+        (tmp_path / "script" / "bench.NEF").write_text("raw")
+        (tmp_path / "script" / "bench.xmp").write_text("<xml/>")
+        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbench_cmd: echo\nbuild_cmd: echo BUILD_RUN\noptimisation_target: src.c\ncommit_scope: src/\nbench_image: bench.NEF\nbench_sidecar: bench.xmp\nmodule_name: diffuse\n")
         (tmp_path / "script" / "instructions.md").write_text("test")
-        
+
         calls = []
         def mock_run_shell_step(name, cmd, cwd):
             calls.append((name, cmd))
             return True, "ok"
         monkeypatch.setattr(optimise.cli, "run_shell_step", mock_run_shell_step)
-        
+
         do_command("build", str(tmp_path / "script"))
         assert len(calls) == 1
         assert calls[0][0] == "BUILD"
@@ -551,23 +555,25 @@ class TestDoCommand:
         
         s = _make_full_build_state(tmp_path, bench_cmd="echo user=1.0, cpu=1.0")
         settings_path = tmp_path / "script" / "settings.conf"
-        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo BUILD_RUN\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\n")
+        (tmp_path / "script" / "bench.NEF").write_text("raw")
+        (tmp_path / "script" / "bench.xmp").write_text("<xml/>")
+        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo BUILD_RUN\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\nbench_image: bench.NEF\nbench_sidecar: bench.xmp\nmodule_name: diffuse\n")
         (tmp_path / "script" / "instructions.md").write_text("test")
-        
+
         calls = []
         def mock_run_shell_step(name, cmd, cwd):
             calls.append((name, cmd))
             return True, "ok"
         monkeypatch.setattr(optimise.cli, "run_shell_step", mock_run_shell_step)
-        
+
         bench_calls = []
         def mock_run_benchmark_loop(*args, **kwargs):
             bench_calls.append(True)
             return [{"user": 1.0, "cpu": 1.0}]
         monkeypatch.setattr(optimise.cli, "run_benchmark_loop", mock_run_benchmark_loop)
-        
+
         do_command("test", str(tmp_path / "script"))
-        
+
         assert len(calls) == 2
         assert calls[0][0] == "BUILD"
         assert calls[0][1] == "echo BUILD_RUN"
@@ -577,10 +583,12 @@ class TestDoCommand:
     def test_qualitycheck_runs_build_then_quality(self, tmp_path, monkeypatch):
         from optimise.cli import do_command
         import optimise.cli
-        
+
         s = _make_full_build_state(tmp_path, bench_cmd="echo")
         settings_path = tmp_path / "script" / "settings.conf"
-        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbench_cmd: echo\nbuild_cmd: echo BUILD_RUN\nquality_cmd: echo QUALITY_RUN\noptimisation_target: src.c\ncommit_scope: src/\n")
+        (tmp_path / "script" / "bench.NEF").write_text("raw")
+        (tmp_path / "script" / "bench.xmp").write_text("<xml/>")
+        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbench_cmd: echo\nbuild_cmd: echo BUILD_RUN\nquality_cmd: echo QUALITY_RUN\noptimisation_target: src.c\ncommit_scope: src/\nbench_image: bench.NEF\nbench_sidecar: bench.xmp\nmodule_name: diffuse\n")
         (tmp_path / "script" / "instructions.md").write_text("test")
         
         calls = []
@@ -603,23 +611,25 @@ class TestDoCommand:
         
         s = _make_full_build_state(tmp_path, bench_cmd="echo user=1.0, cpu=1.0")
         settings_path = tmp_path / "script" / "settings.conf"
-        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo BUILD_RUN\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\n")
+        (tmp_path / "script" / "bench.NEF").write_text("raw")
+        (tmp_path / "script" / "bench.xmp").write_text("<xml/>")
+        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo BUILD_RUN\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\nbench_image: bench.NEF\nbench_sidecar: bench.xmp\nmodule_name: diffuse\n")
         (tmp_path / "script" / "instructions.md").write_text("test")
-        
+
         calls = []
         def mock_run_shell_step(name, cmd, cwd):
             calls.append((name, cmd))
             return True, "ok"
         monkeypatch.setattr(optimise.cli, "run_shell_step", mock_run_shell_step)
-        
+
         bench_calls = []
         def mock_run_benchmark_loop(*args, **kwargs):
             bench_calls.append(True)
             return [{"user": 1.0, "cpu": 1.0}]
         monkeypatch.setattr(optimise.cli, "run_benchmark_loop", mock_run_benchmark_loop)
-        
+
         do_command("benchmark", str(tmp_path / "script"))
-        
+
         assert len(calls) == 1
         assert calls[0][0] == "BUILD"
         assert calls[0][1] == "echo BUILD_RUN"
@@ -628,10 +638,12 @@ class TestDoCommand:
     def test_test_runs_with_commit_does_not_fail_benchmark(self, tmp_path, monkeypatch):
         from optimise.cli import do_command
         import optimise.cli
-        
+
         s = _make_full_build_state(tmp_path, bench_cmd="echo user=1.0, cpu=1.0")
         settings_path = tmp_path / "script" / "settings.conf"
-        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo BUILD_RUN\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src/src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\n")
+        (tmp_path / "script" / "bench.NEF").write_text("raw")
+        (tmp_path / "script" / "bench.xmp").write_text("<xml/>")
+        settings_path.write_text(f"target_repo: {tmp_path / 'target'}\nbranch: main\ninstructions: instructions.md\nbuild_cmd: echo BUILD_RUN\nbench_cmd: echo user=1.0, cpu=1.0\nquality_cmd: echo QUALITY_PASS\noptimisation_target: src/src.c\ncommit_scope: src/\nnum_warmup_iterations: 0\nbenchmark_convergence_threshold_pct: 0.1\nbenchmark_convergence_tail_runs: 5\nearly_abort_pct: 0\nbench_image: bench.NEF\nbench_sidecar: bench.xmp\nmodule_name: diffuse\n")
         (tmp_path / "script" / "instructions.md").write_text("test")
         
         calls = []
@@ -709,6 +721,8 @@ class TestCodingFailureRevertsScope:
             capture_output=True, text=True,
         ).stdout.strip()
 
+        (script / "bench.NEF").write_text("raw")
+        (script / "bench.xmp").write_text("<xml/>")
         (script / "settings.conf").write_text(
             f"target_repo: {target}\n"
             f"branch: {branch}\n"
@@ -728,6 +742,9 @@ class TestCodingFailureRevertsScope:
             f"commit_scope: src/\n"
             f"idea_generation_batch_size: 5\n"
             f"llm_timeout: 60\n"
+            f"bench_image: bench.NEF\n"
+            f"bench_sidecar: bench.xmp\n"
+            f"module_name: diffuse\n"
         )
 
         return target, script
@@ -802,6 +819,8 @@ class TestBaselinePreconditions:
             capture_output=True, text=True,
         ).stdout.strip()
 
+        (script / "bench.NEF").write_text("raw")
+        (script / "bench.xmp").write_text("<xml/>")
         (script / "settings.conf").write_text(
             f"target_repo: {target}\n"
             f"branch: {branch}\n"
@@ -821,6 +840,9 @@ class TestBaselinePreconditions:
             f"commit_scope: src/\n"
             f"idea_generation_batch_size: 5\n"
             f"llm_timeout: 60\n"
+            f"bench_image: bench.NEF\n"
+            f"bench_sidecar: bench.xmp\n"
+            f"module_name: diffuse\n"
         )
 
         return target, script
@@ -967,9 +989,52 @@ class TestDoCodeReview:
 class TestComputeTarget:
     """_compute_target sets targeting state in settings dict."""
 
-    def test_instance_targeting_sets_target_index(self, tmp_path):
-        """In least_improved_instance mode, sets _target_instance_index."""
+    def _make_sidecar(self, tmp_path):
+        """Create a minimal 2-instance XMP sidecar for testing."""
+        xmp = tmp_path / "test.xmp"
+        xmp.write_text('''\
+<?xml version="1.0" encoding="UTF-8"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:darktable="http://darktable.sf.net/"
+    darktable:iop_order_list="diffuse,0,diffuse,1">
+   <darktable:history>
+    <rdf:Seq>
+     <rdf:li
+      darktable:num="0"
+      darktable:operation="diffuse"
+      darktable:enabled="1"
+      darktable:modversion="2"
+      darktable:params="0a0000000000000020000000000000000000000000000000000000000000000000000000000000000000003f0000003f0000003f0000003f00000000"
+      darktable:multi_name="_builtin_artistic effects | bloom"
+      darktable:multi_name_hand_edited="0"
+      darktable:multi_priority="0"
+      darktable:blendop_version="14"
+      darktable:blendop_params=""/>
+     <rdf:li
+      darktable:num="1"
+      darktable:operation="diffuse"
+      darktable:enabled="1"
+      darktable:modversion="2"
+      darktable:params="0b000000000000004000000000008040000000000000a0c00000a0c00000a0c00000a0c000000000000080bf000080bf000080bf000080bf00000000"
+      darktable:multi_name="_builtin_lens deblur | hard"
+      darktable:multi_name_hand_edited="0"
+      darktable:multi_priority="1"
+      darktable:blendop_version="14"
+      darktable:blendop_params=""/>
+    </rdf:Seq>
+   </darktable:history>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+''')
+        return str(xmp)
+
+    def test_instance_targeting_sets_label_and_params(self, tmp_path):
+        """In least_improved_instance mode, stashes label and params."""
         from optimise.benchmark import format_perf_log
+        from optimise.cli import _compute_target
 
         script = tmp_path / "script"
         script.mkdir()
@@ -980,26 +1045,91 @@ class TestComputeTarget:
         (script / "perf-logs" / "baseline-perf.md").write_text(format_perf_log(baseline))
         (script / "perf-logs" / "current-best-perf.md").write_text(format_perf_log(current))
 
-        settings = {"targeting_mode": "least_improved_instance"}
+        sidecar = self._make_sidecar(tmp_path)
+        settings = {
+            "targeting_mode": "least_improved_instance",
+            "bench_sidecar": sidecar,
+            "module_name": "diffuse",
+        }
 
-        from optimise.cli import _compute_target
         _compute_target(str(script), settings)
 
         assert settings["_target_instance_index"] == 1
         assert settings["_target_instance_baseline"] == pytest.approx(10.0)
+        assert settings["_target_instance_current"] == pytest.approx(9.5)
+        assert settings["_target_instance_label"] == "hard"
+        assert settings["_target_instance_params"]["iterations"] == 11
+        assert settings["_target_instance_improvement_pct"] == pytest.approx(5.0)
+        assert settings["_avg_improvement_pct"] == pytest.approx(12.5)  # (20% + 5%) / 2
+        assert len(settings["_all_instances"]) == 2
 
-    def test_overall_mode_clears_targeting_state(self, tmp_path):
-        """In overall mode, any previous targeting state is cleared."""
+    def test_overall_mode_clears_all_targeting_state(self, tmp_path):
+        """In overall mode, all targeting keys are cleared."""
+        from optimise.cli import _compute_target
+
         settings = {
             "targeting_mode": "overall",
             "_target_instance_index": 1,
             "_target_instance_baseline": 10.0,
+            "_target_instance_current": 9.5,
+            "_target_instance_label": "bloom",
+            "_target_instance_params": {},
+            "_target_instance_improvement_pct": 5.0,
+            "_avg_improvement_pct": 8.0,
+            "_all_instances": [],
         }
 
-        from optimise.cli import _compute_target
         _compute_target(str(tmp_path), settings)
 
-        assert "_target_instance_index" not in settings
-        assert "_target_instance_baseline" not in settings
+        for key in ("_target_instance_index", "_target_instance_baseline",
+                     "_target_instance_current", "_target_instance_label",
+                     "_target_instance_params", "_target_instance_improvement_pct",
+                     "_avg_improvement_pct", "_all_instances"):
+            assert key not in settings
 
 
+class TestBuildTargetingDict:
+    """_build_targeting_dict assembles targeting dict from settings."""
+
+    def test_returns_none_when_overall(self):
+        from optimise.cli import _build_targeting_dict
+        settings = {"targeting_mode": "overall"}
+        assert _build_targeting_dict(settings) is None
+
+    def test_returns_none_when_no_label(self):
+        from optimise.cli import _build_targeting_dict
+        settings = {"targeting_mode": "least_improved_instance"}
+        assert _build_targeting_dict(settings) is None
+
+    def test_returns_dict_when_targeting(self):
+        from optimise.cli import _build_targeting_dict
+        settings = {
+            "targeting_mode": "least_improved_instance",
+            "module_name": "diffuse",
+            "_target_instance_index": 9,
+            "_target_instance_label": "lens deblur | hard",
+            "_target_instance_params": {
+                "iterations": 10, "sharpness": 0.0, "radius": 512,
+                "regularization": 3.0, "variance_threshold": 0.0,
+                "anisotropy_first": 5.0, "anisotropy_second": 5.0,
+                "anisotropy_third": 5.0, "anisotropy_fourth": 5.0,
+                "threshold": 0.0,
+                "first": -0.25, "second": -0.25, "third": -0.25, "fourth": -0.25,
+                "radius_center": 0,
+            },
+            "_target_instance_baseline": 9.954,
+            "_target_instance_current": 9.745,
+            "_target_instance_improvement_pct": 2.1,
+            "_avg_improvement_pct": 8.4,
+            "_all_instances": [{"label": f"inst{i}"} for i in range(21)],
+        }
+        result = _build_targeting_dict(settings)
+        assert result["module_name"] == "diffuse"
+        assert result["instance_count"] == 21
+        assert result["index"] == 9
+        assert result["label"] == "lens deblur | hard"
+        assert result["improvement_pct"] == pytest.approx(2.1)
+        assert result["avg_improvement_pct"] == pytest.approx(8.4)
+        assert result["baseline_user"] == pytest.approx(9.954)
+        assert result["current_user"] == pytest.approx(9.745)
+        assert "iterations: 10" in result["params_text"]

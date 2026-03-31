@@ -11,9 +11,13 @@ import sys
 import glob
 
 BIN = os.path.expanduser("~/darktable-build/bin/darktable-cli")
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-IMAGE = os.path.join(SCRIPT_DIR, "test-data", "DSC_9034.NEF")
-XMP = os.path.join(SCRIPT_DIR, "test-data", "DSC_9034.NEF.xmp")
+
+if len(sys.argv) < 3:
+    print("Usage: bench_diffuse_single.py <image> <sidecar>", file=sys.stderr)
+    sys.exit(1)
+
+IMAGE = sys.argv[1]
+XMP = sys.argv[2]
 OUT_DIR = "/tmp/dt-bench-out"
 CONFIG_DIR = "/tmp/darktable-perftest/"
 

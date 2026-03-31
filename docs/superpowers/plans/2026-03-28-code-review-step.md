@@ -30,7 +30,7 @@ Add `TestCodeReviewPrompt` class:
 - `test_includes_diff`: Assert the diff text appears in the prompt.
 - `test_includes_instructions`: Assert instructions text appears.
 - `test_includes_idea_content`: Assert idea content appears.
-- `test_includes_checklist_items`: Assert all 4 checklist items appear (stale comments, macros, duplication, OpenCL).
+- `test_includes_checklist_items`: Assert all checklist items appear (stale comments, macros, duplication, specialization-boundary regressions, OpenCL).
 - `test_specifies_lgtm_response_format`: Assert "LGTM" appears as the expected approval response.
 - `test_prohibits_edits`: Assert prompt tells reviewer not to make edits.
 

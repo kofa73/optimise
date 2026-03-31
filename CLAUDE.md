@@ -33,7 +33,7 @@ BASELINE → GENERATE → CODE → CODE_REVIEW → BUILD/TEST/BENCHMARK → SUCC
 - **BASELINE**: Run benchmark to establish `perf-logs/baseline-perf.md` and `perf-logs/current-best-perf.md`
 - **GENERATE**: Produce idea batch via LLM (`ideas/todo/`), optionally run strategy review
 - **CODE**: LLM implements the idea, editing files in the target repo
-- **CODE_REVIEW**: Cheaper LLM (normal tier) reviews the diff against a narrow checklist (stale comments, macro misuse, unswitched duplication, OpenCL contamination). Rejected → feedback loops back to CODE. Approved → proceeds to BUILD
+- **CODE_REVIEW**: Cheaper LLM (normal tier) reviews the diff against a narrow checklist (stale comments, giant macro misuse, unswitched duplication, specialization-boundary regressions such as moving `DT_OMP_FOR()` into a generic helper with hot-path flags, and OpenCL contamination). Rejected → feedback loops back to CODE. Approved → proceeds to BUILD
 - **BUILD→TEST→BENCHMARK**: Pipeline in `_do_build_test_benchmark()`. On failure, retries with error context. On success, commits to target repo and updates current-best perf log
 
 Startup recovery (`determine_startup_state()` in `runner.py`) detects orphan states and resumes correctly after crashes.
@@ -48,6 +48,7 @@ Startup recovery (`determine_startup_state()` in `runner.py`) detects orphan sta
 | `settings.py` | Parse `settings.conf` (key: value), validate types/paths, templates for `init` |
 | `ai.py` | `AIRouter` — route calls to Claude CLI or Gemini CLI with failover |
 | `prompts.py` | Build LLM prompts for idea generation, implementation, code review, and strategy review |
+| `xmp.py` | Parse XMP sidecar files — extract module instance labels, params, pipeline order |
 | `state.py` | Idea lifecycle: create/list/move/read ideas across `todo/coding/testing/done` |
 | `git.py` | `GitRepo` wrapper — dirty checks, scoped rollback, commit, branch management |
 
@@ -58,6 +59,7 @@ Startup recovery (`determine_startup_state()` in `runner.py`) detects orphan sta
 - **Convergence**: Benchmark runs repeat until element-wise best stabilises (tail counter hits `convergence_tail_runs`)
 - **Early abort**: First benchmark run checked against `early_abort_pct` threshold vs current-best to avoid wasting time on clearly-worse changes
 - **Idea files**: Markdown in `ideas/<stage>/`, filename = `NNN-YYYY-MM-DD-HH-MM-SS-slug.md`, first line = title, rest = body
+- **Prompt targeting**: When `targeting_mode` is `least_improved_instance`, XMP sidecar is parsed (`xmp.py`) to extract instance labels and decoded binary params. `_compute_target()` identifies the least-improved instance, and `_build_targeting_dict()` assembles the context passed to both generation and implementation prompt builders
 
 ### Data Flow
 
@@ -69,4 +71,8 @@ perf-logs/current-best-perf.md ← format_perf_log(best_rows)
 target repo ← LLM edits ← build_implementation_prompt()
                                           ↑
 ideas/todo/*.md ← parse_generated_ideas() ← build_generation_prompt()
+
+XMP sidecar → parse_sidecar() → instance labels + decoded params
+                                          ↓
+              _compute_target() → _build_targeting_dict() → prompt builders
 ```

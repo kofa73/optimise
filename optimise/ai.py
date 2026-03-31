@@ -44,6 +44,22 @@ PROVIDERS = {
         "version_parse": lambda s: s.strip(),  # "0.33.1" -> "0.33.1"
         "built_with": "0.34.0",
     },
+    "codex": {
+        "cmd_text": lambda model: [
+            "codex", "exec", "--model", model,
+            "--sandbox", "read-only", "-",
+        ],
+        "cmd_edit": lambda model: [
+            "codex", "exec", "--model", model,
+            "--dangerously-bypass-approvals-and-sandbox", "-",
+        ],
+        "env_cleanup": [],
+        "models": {"best": "gpt-5.4", "normal": "gpt-5.4-mini"},
+        "uses_stdin": True,
+        "version_cmd": ["codex", "--version"],
+        "version_parse": lambda s: s.split()[-1],  # "codex-cli 0.117.0" -> "0.117.0"
+        "built_with": "0.117.0",
+    },
 }
 
 
@@ -73,7 +89,7 @@ class AIRouter:
         self.version_warnings = {}  # provider -> warning message
         permanently_disabled = set(disabled_providers or [])
 
-        for name in (providers or ["claude", "gemini"]):
+        for name in (providers or ["claude", "gemini", "codex"]):
             if name in permanently_disabled:
                 log.info(f"AI provider permanently disabled by settings: {name}")
                 continue

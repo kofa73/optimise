@@ -10,6 +10,3 @@ Code readability and future maintainability are MORE IMPORTANT than performance.
 - NEVER introduce large macros. Use `static inline` functions with `__attribute__((always_inline))` instead. Macros are a maintenance headache — inlined functions give the same performance with type safety and debuggability.
 - Repeated code snippets created by unswitching MUST be factored out into separate `always_inline` functions. Do not duplicate logic across branches.
 - When you remove or change code, remove or update ALL comments that referred to the old code. Stale comments (describing logic that no longer exists) are a bug. After every change, re-read the surrounding comments and delete any that no longer apply.
-
-Your PRIMARY OPTIMISATION TARGET is the preset "sharpen demosaicing / AA filter"; improve code paths that are triggered by using that preset. The definition of the preset can be found in /workspace/darktable/src/iop/diffuse.c .
-

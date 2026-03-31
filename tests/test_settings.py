@@ -69,6 +69,10 @@ class TestValidateSettings:
         src.write_text("int main() {}")
         instr = tmp_path / "instructions.md"
         instr.write_text("do stuff")
+        bench_img = tmp_path / "bench.NEF"
+        bench_img.write_text("raw")
+        bench_xmp = tmp_path / "bench.xmp"
+        bench_xmp.write_text("<xml/>")
         return {
             "target_repo": str(target),
             "branch": "optimise-test",
@@ -89,6 +93,9 @@ class TestValidateSettings:
             "max_runtime_minutes": "300",
             "idea_generation_batch_size": "5",
             "commit_prefix": "perf",
+            "bench_image": str(bench_img),
+            "bench_sidecar": str(bench_xmp),
+            "module_name": "diffuse",
         }
 
     def test_valid_settings_pass(self, tmp_path):
@@ -256,3 +263,69 @@ class TestValidateSettings:
     def test_providers_retry_limit_in_template(self):
         from optimise.settings import SETTINGS_TEMPLATE
         assert "providers_retry_limit:" in SETTINGS_TEMPLATE
+
+    def test_bench_image_validated_as_existing_file(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        img = tmp_path / "test.NEF"
+        img.write_text("raw")
+        settings["bench_image"] = str(img)
+        settings["bench_sidecar"] = str(tmp_path / "test.xmp")
+        (tmp_path / "test.xmp").write_text("<xml/>")
+        settings["module_name"] = "diffuse"
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["bench_image"] == str(img)
+
+    def test_bench_image_missing_file_raises(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        settings["bench_image"] = "nonexistent.NEF"
+        settings["bench_sidecar"] = "nonexistent.xmp"
+        settings["module_name"] = "diffuse"
+        with pytest.raises(SettingsError, match="bench_image"):
+            validate_settings(settings, script_repo=str(tmp_path))
+
+    def test_bench_sidecar_missing_file_raises(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        img = tmp_path / "test.NEF"
+        img.write_text("raw")
+        settings["bench_image"] = str(img)
+        settings["bench_sidecar"] = "nonexistent.xmp"
+        settings["module_name"] = "diffuse"
+        with pytest.raises(SettingsError, match="bench_sidecar"):
+            validate_settings(settings, script_repo=str(tmp_path))
+
+    def test_module_name_validated_against_known_modules(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        img = tmp_path / "test.NEF"
+        img.write_text("raw")
+        sidecar = tmp_path / "test.xmp"
+        sidecar.write_text("<xml/>")
+        settings["bench_image"] = str(img)
+        settings["bench_sidecar"] = str(sidecar)
+        settings["module_name"] = "unknown_module"
+        with pytest.raises(SettingsError, match="module_name"):
+            validate_settings(settings, script_repo=str(tmp_path))
+
+    def test_module_name_diffuse_is_valid(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        img = tmp_path / "test.NEF"
+        img.write_text("raw")
+        sidecar = tmp_path / "test.xmp"
+        sidecar.write_text("<xml/>")
+        settings["bench_image"] = str(img)
+        settings["bench_sidecar"] = str(sidecar)
+        settings["module_name"] = "diffuse"
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["module_name"] == "diffuse"
+
+    def test_bench_image_relative_path_resolved(self, tmp_path):
+        settings = self._make_valid_settings(tmp_path)
+        img = tmp_path / "test.NEF"
+        img.write_text("raw")
+        sidecar = tmp_path / "test.xmp"
+        sidecar.write_text("<xml/>")
+        settings["bench_image"] = "test.NEF"
+        settings["bench_sidecar"] = "test.xmp"
+        settings["module_name"] = "diffuse"
+        result = validate_settings(settings, script_repo=str(tmp_path))
+        assert result["bench_image"] == str(img)
+        assert result["bench_sidecar"] == str(sidecar)

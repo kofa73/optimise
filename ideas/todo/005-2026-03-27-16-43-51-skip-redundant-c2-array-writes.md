@@ -1,3 +1,0 @@
-perf: conditionally evaluate secondary tensor magnitudes for matched orders
-
-For order groups where `GRAD_MATCHED` or `LAPL_MATCHED` is true (like the target "sharpen demosaicing / AA filter" preset), the secondary orders (`c2[2]` and `c2[3]`) are never passed to the accumulation function. While the expensive `dt_vector_exp` calls are already correctly unswitched for these matched cases, the initial `magnitude * half_anisotropy` multiplications and array writes for `c2[2]` and `c2[3]` are still unconditionally executed. Wrapping these assignments in `!(GRAD_MATCHED)` and `!(LAPL_MATCHED)` macro conditions allows the compiler to completely dead-code these redundant tensor evaluations.

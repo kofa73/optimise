@@ -77,12 +77,19 @@ def _compute_target(directory, settings):
     """Set targeting runtime state in settings dict.
 
     For 'least_improved_instance' mode, reads baseline and current-best
-    perf logs and identifies the least-improved instance.
+    perf logs, identifies the least-improved instance, and stashes
+    label, params, and timing info from the XMP sidecar.
     For 'overall' mode, clears any previous targeting state.
     """
+    _target_keys = (
+        "_target_instance_index", "_target_instance_baseline",
+        "_target_instance_current", "_target_instance_label",
+        "_target_instance_params", "_target_instance_improvement_pct",
+        "_avg_improvement_pct", "_all_instances",
+    )
     if settings.get("targeting_mode") != "least_improved_instance":
-        settings.pop("_target_instance_index", None)
-        settings.pop("_target_instance_baseline", None)
+        for key in _target_keys:
+            settings.pop(key, None)
         return
 
     baseline_path = os.path.join(directory, "perf-logs", "baseline-perf.md")
@@ -93,14 +100,54 @@ def _compute_target(directory, settings):
         current_rows = parse_perf_log(f.read())
 
     target = find_least_improved_instance(baseline_rows, current_rows)
-    settings["_target_instance_index"] = target["index"]
+
+    from optimise.xmp import parse_sidecar
+    instances = parse_sidecar(settings["bench_sidecar"], settings["module_name"])
+
+    idx = target["index"]
+    settings["_target_instance_index"] = idx
     settings["_target_instance_baseline"] = target["baseline_user"]
+    settings["_target_instance_current"] = target["current_user"]
+    settings["_target_instance_label"] = instances[idx]["label"]
+    settings["_target_instance_params"] = instances[idx]["params"]
+    settings["_target_instance_improvement_pct"] = target["improvement_pct"]
+
+    # Average improvement across all instances for context
+    total_improvement = sum(
+        (b["user"] - c["user"]) / b["user"] * 100
+        for b, c in zip(baseline_rows, current_rows)
+    )
+    settings["_avg_improvement_pct"] = total_improvement / len(baseline_rows)
+    settings["_all_instances"] = instances
 
     log.info(
-        f"[TARGET] Instance {target['index']}: "
+        f"[TARGET] Instance {idx} (\"{instances[idx]['label']}\"): "
         f"{target['baseline_user']:.3f}s -> {target['current_user']:.3f}s "
         f"({target['improvement_pct']:+.1f}% improvement, least improved)"
     )
+
+
+def _build_targeting_dict(settings):
+    """Assemble targeting dict for prompt builders, or None if not targeting."""
+    if settings.get("targeting_mode") != "least_improved_instance":
+        return None
+    if "_target_instance_label" not in settings:
+        return None
+
+    from optimise.xmp import format_params
+
+    return {
+        "module_name": settings["module_name"],
+        "instance_count": len(settings["_all_instances"]),
+        "index": settings["_target_instance_index"],
+        "label": settings["_target_instance_label"],
+        "improvement_pct": settings["_target_instance_improvement_pct"],
+        "avg_improvement_pct": settings["_avg_improvement_pct"],
+        "baseline_user": settings["_target_instance_baseline"],
+        "current_user": settings["_target_instance_current"],
+        "params_text": format_params(settings["module_name"],
+                                     settings["_target_instance_params"]),
+    }
 
 
 def _read_learnings(directory):
@@ -131,9 +178,11 @@ def _generate_ideas(directory, settings, ai, target_repo_path, instructions, tar
 
     learnings = _read_learnings(directory)
     existing_titles = all_idea_titles(directory)
+    targeting = _build_targeting_dict(settings)
 
     prompt = build_generation_prompt(
         instructions, learnings, existing_titles, needed, target_files,
+        targeting=targeting,
     )
     output, rc, provider = ai.call(
         prompt, tier="best", cwd=target_repo_path,
@@ -241,6 +290,8 @@ def do_run(directory):
                     convergence_threshold_pct=settings["benchmark_convergence_threshold_pct"],
                     convergence_tail_runs=settings["benchmark_convergence_tail_runs"],
                     early_abort_pct=settings["early_abort_pct"],
+                    bench_image=settings["bench_image"],
+                    bench_sidecar=settings["bench_sidecar"],
                 )
             except BenchmarkError as e:
                 log.error(f"Baseline benchmark failed: {e}")
@@ -332,8 +383,10 @@ def do_run(directory):
                 with open(errors_path) as f:
                     errors = f.read()
 
+            targeting = _build_targeting_dict(settings)
             prompt = build_implementation_prompt(
                 instructions, learnings, idea_content, target_files, errors,
+                targeting=targeting,
             )
             log.info(f"[CODE] Implementing idea: {idea_title[:80]}")
             output, rc, provider = ai.call(
@@ -518,6 +571,8 @@ def _do_build_test_benchmark(s, retries_left):
             early_abort_pct=s.settings["early_abort_pct"],
             target_instance_index=s.settings.get("_target_instance_index"),
             target_instance_baseline=s.settings.get("_target_instance_baseline"),
+            bench_image=s.settings["bench_image"],
+            bench_sidecar=s.settings["bench_sidecar"],
         )
     except BenchmarkError as e:
         log.error(f"Benchmark error: {e}")
@@ -735,6 +790,8 @@ def do_command(command, directory, commit=None, _skip_build=False):
                 convergence_threshold_pct=settings["benchmark_convergence_threshold_pct"],
                 convergence_tail_runs=settings["benchmark_convergence_tail_runs"],
                 early_abort_pct=settings["early_abort_pct"],
+                bench_image=settings["bench_image"],
+                bench_sidecar=settings["bench_sidecar"],
             )
             baseline_sum = float("inf")
             baseline_path = os.path.join(directory, "perf-logs", "baseline-perf.md")

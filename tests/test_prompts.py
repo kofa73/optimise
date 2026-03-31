@@ -106,6 +106,94 @@ class TestReviewPrompt:
         assert "learnings.md" in prompt
 
 
+class TestGenerationPromptTargeting:
+    def _targeting(self):
+        return {
+            "module_name": "diffuse",
+            "instance_count": 21,
+            "index": 9,
+            "label": "lens deblur | hard",
+            "improvement_pct": 2.1,
+            "avg_improvement_pct": 8.4,
+            "baseline_user": 9.954,
+            "current_user": 9.745,
+            "params_text": "  iterations: 10, radius: 512",
+        }
+
+    def test_includes_targeting_section(self):
+        prompt = build_generation_prompt(
+            instructions="Optimise",
+            learnings="",
+            existing_titles=[],
+            count=3,
+            target_files=["src/diffuse.c"],
+            targeting=self._targeting(),
+        )
+        assert "Instance targeting" in prompt
+        assert "lens deblur | hard" in prompt
+        assert "9.954" in prompt
+        assert "iterations: 10" in prompt
+
+    def test_no_targeting_section_when_none(self):
+        prompt = build_generation_prompt(
+            instructions="Optimise",
+            learnings="",
+            existing_titles=[],
+            count=3,
+            target_files=["src/diffuse.c"],
+            targeting=None,
+        )
+        assert "Instance targeting" not in prompt
+
+    def test_no_targeting_section_when_omitted(self):
+        prompt = build_generation_prompt(
+            instructions="Optimise",
+            learnings="",
+            existing_titles=[],
+            count=3,
+            target_files=["src/diffuse.c"],
+        )
+        assert "Instance targeting" not in prompt
+
+
+class TestImplementationPromptTargeting:
+    def _targeting(self):
+        return {
+            "module_name": "diffuse",
+            "instance_count": 21,
+            "index": 9,
+            "label": "lens deblur | hard",
+            "improvement_pct": 2.1,
+            "avg_improvement_pct": 8.4,
+            "baseline_user": 9.954,
+            "current_user": 9.745,
+            "params_text": "  iterations: 10, radius: 512",
+        }
+
+    def test_includes_targeting_section(self):
+        prompt = build_implementation_prompt(
+            instructions="Optimise",
+            learnings="",
+            idea_content="idea",
+            target_files=["src/diffuse.c"],
+            errors=None,
+            targeting=self._targeting(),
+        )
+        assert "Instance targeting" in prompt
+        assert "lens deblur | hard" in prompt
+
+    def test_no_targeting_section_when_none(self):
+        prompt = build_implementation_prompt(
+            instructions="Optimise",
+            learnings="",
+            idea_content="idea",
+            target_files=["src/diffuse.c"],
+            errors=None,
+            targeting=None,
+        )
+        assert "Instance targeting" not in prompt
+
+
 class TestCodeReviewPrompt:
     def _build(self, **kwargs):
         defaults = {
@@ -135,6 +223,7 @@ class TestCodeReviewPrompt:
         assert "stale" in lower and "comment" in lower
         assert "macro" in lower
         assert "duplicat" in lower
+        assert "dt_omp_for" in lower or "specialization" in lower
         assert "opencl" in lower or "_cl" in lower
 
     def test_specifies_lgtm_response_format(self):
