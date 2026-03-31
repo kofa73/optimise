@@ -1,0 +1,3 @@
+perf: conditionally skip spatial accumulations when individual ABCD speeds are zero
+
+For mixed-speed presets (like the "local contrast" family where the 1st/4th orders are active but 2nd/3rd are exactly zero), the PDE solver still unconditionally executes `accumulate_convolution_direct` and `accumulate_isotropic` for the zero-speed orders, performing dozens of MADD operations per pixel only to multiply the result by `ABCD=0` at the end. By wrapping the individual accumulation calls and their corresponding `dt_vector_exp` triggers inside the pixel body with a simple, loop-invariant `if (ctx->ABCD[x] != 0.0f)` check, we elegantly bypass the entire spatial tensor accumulation math for inactive orders without inflating binary size via outer-loop unswitching.
