@@ -1,3 +1,0 @@
-perf: bypass 3x3 variance calculation via inner-loop branch when regularization is zero
-
-For presets where `regularization` is exactly zero (such as "bloom" or "inpaint highlights"), the pixel body unconditionally computes the expensive 9-element sum of squares for the HF variance, only to immediately multiply it by a `regularization_factor` of 0.0. Previous attempts to optimize this used outer-loop unswitching, which likely regressed due to catastrophic instruction cache bloat. By instead wrapping the variance computation inside `diffuse_pixel_body` with a highly predictable, loop-invariant `if (ctx->regularization_factor > 0.f)` check, we bypass ~36 MAC operations per pixel for zero-regularization presets with virtually zero overhead.
