@@ -1,3 +1,0 @@
-perf: precompute interleaved PDE row order for each wavelet scale
-
-Materialize the `dwt_interleave_rows(row, height, mult)` permutation once per scale and have `heat_PDE_diffusion` walk that array directly instead of recomputing the mapping on every pass. It keeps the current row traversal strategy that already benchmarked better than linear order, but removes repeated row-permutation arithmetic from every iteration and pairs naturally with prebuilt neighbour-row tables.
