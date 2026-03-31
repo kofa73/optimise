@@ -181,9 +181,10 @@ def evaluate_success(baseline_rows, result_rows, min_improvement_pct, max_regres
             )
 
         return True, target_improvement_pct, (
-            f"Instance {target_instance_index}: {b:.3f}s -> {r:.3f}s "
-            f"(~{target_improvement_pct:.1f}% improvement); "
-            f"sum(user): {baseline_sum:.3f}s -> {result_sum:.3f}s"
+            f"Reduced instance {target_instance_index} time from {b:.3f}s to {r:.3f}s "
+            f"(~{target_improvement_pct:.1f}% improvement), "
+            f"reduced sum(user) from {baseline_sum:.3f}s to {result_sum:.3f}s "
+            f"(~{sum_improvement_pct:.1f}% improvement)"
         )
     else:
         # Overall mode

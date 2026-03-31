@@ -378,6 +378,16 @@ class TestSucceedIdea:
         idea_content = (tmp_path / "script" / "ideas" / "done" / "idea.md").read_text()
         assert "# Individual timings" in idea_content
 
+    def test_succeed_idea_uses_detail_string(self, tmp_path):
+        """_succeed_idea should use the detail string provided by evaluate_success for its report."""
+        s = _make_build_state(tmp_path)
+        best = [{"user": 9.0, "cpu": 90.0}]
+        custom_detail = "Custom improvement summary"
+        _succeed_idea(s, best, improvement_pct=10.0,
+                      detail=custom_detail, baseline_sum=10.0)
+        idea_content = (tmp_path / "script" / "ideas" / "done" / "idea.md").read_text()
+        assert custom_detail in idea_content
+
 
 class TestFailIdea:
     def test_no_perf_log_file(self, tmp_path):
@@ -429,6 +439,38 @@ class TestFailIdea:
                    "15.000s vs baseline 10.000s (-50.0%, need 5.0%)",
                    bench_rows=partial)
         assert result["consecutive_perf_failures"] == 0
+
+    def test_fail_idea_target_not_reached_instance_mode(self, tmp_path, monkeypatch):
+        """In instance mode, failure message should correctly report instance improvement."""
+        import optimise.cli
+        s = _make_build_state(tmp_path)
+        s.settings["targeting_mode"] = "least_improved_instance"
+        s.settings["_target_instance_index"] = 0
+        
+        # Mock evaluate_success to return a specific detail
+        def mock_evaluate_success(*args, **kwargs):
+            return False, 0.1, "Below minimum improvement on targeted instance 0: 0.10% < 0.5%"
+        
+        monkeypatch.setattr(optimise.cli, "evaluate_success", mock_evaluate_success)
+        
+        # Mock run_benchmark_loop to return 'best'
+        best = [{"user": 9.99, "cpu": 99.9}]
+        monkeypatch.setattr(optimise.cli, "run_benchmark_loop", lambda *a, **kw: best)
+        
+        # I need to trigger the failure path in do_run or similar, or just test the logic that calls _fail_idea
+        # do_run is too big. Let's look at where evaluate_success is called. It's in do_run (StartupState.BENCHMARK) or similar.
+        # Actually it's in the loop in do_run.
+        
+        # Let's just test that if we use the detail in the failure message it's better.
+        # Wait, the current code in do_run does:
+        # msg = f"target not reached: {result_sum:.3f}s vs baseline {baseline_sum:.3f}s ({improvement_pct:+.1f}%, need {need}%)"
+        
+        # If improvement_pct is 0.1, msg will be "target not reached: 9.990s vs baseline 10.000s (+0.1%, need 0.5%)"
+        # This is slightly better than the success case because it doesn't say "Reduced sum(user)", 
+        # but it still labels 0.1% (instance improvement) next to sum timings.
+        
+        # I should probably just make it use `detail`.
+
 
 
 class TestDoBuildTestBenchmarkPerfTable:

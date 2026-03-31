@@ -218,6 +218,19 @@ class TestEvaluateSuccess:
         )
         assert ok
 
+    def test_instance_mode_detail_string_format(self):
+        """Verify the detail string contains both instance and sum info in the new format."""
+        baseline = [{"user": 10.0}, {"user": 10.0}]  # sum=20
+        result = [{"user": 10.0}, {"user": 9.0}]    # sum=19 (5% imp), inst 1: 10% imp
+        ok, pct, detail = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
+            targeting_mode="least_improved_instance", target_instance_index=1,
+        )
+        assert ok
+        # Desired: Reduced instance 1 time from 10.000s to 9.000s (~10.0% improvement), reduced sum(user) from 20.000s to 19.000s (~5.0% improvement)
+        assert "Reduced instance 1 time from 10.000s to 9.000s (~10.0% improvement)" in detail
+        assert "reduced sum(user) from 20.000s to 19.000s (~5.0% improvement)" in detail
+
 
 from optimise.benchmark import find_least_improved_instance
 

@@ -604,12 +604,8 @@ def _succeed_idea(s, best, improvement_pct, detail, baseline_sum):
     """Handle a successful optimisation."""
     idea_title, idea_body = read_idea(s.script_repo, "testing", s.idea_file)
     prefix = s.settings["commit_prefix"]
-    result_sum = sum_user(best)
 
-    perf_line = (
-        f"Reduced sum(user) from {baseline_sum:.3f}s to {result_sum:.3f}s "
-        f"(~{improvement_pct:.1f}% improvement)"
-    )
+    perf_line = detail
     commit_title = f"{prefix}: {idea_title}"
     commit_body = idea_body
     if commit_body:
