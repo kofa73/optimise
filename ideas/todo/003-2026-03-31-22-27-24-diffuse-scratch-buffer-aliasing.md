@@ -1,0 +1,3 @@
+perf: collapse diffuse full-frame scratch buffers through lifetime-based aliasing
+
+`process()` keeps four full-resolution float buffers live at once (`temp1`, `temp2`, `LF_odd`, `LF_even`) on top of the HF pyramid. Add a small scratch-layout planner so the outer-iteration ping-pong buffer that is dead during `wavelets_process()` aliases one LF scratch role, reducing peak memory by one full image without changing traversal order or arithmetic. On the max-scale local-contrast preset, shrinking the working set should lower TLB/cache pressure more than another small ALU tweak.

@@ -1,0 +1,3 @@
+perf: specialize fully clamped coarse diffuse scales
+
+When `mult` becomes large relative to the ROI, the dilated 3x3 stencil in `heat_PDE_diffusion()` collapses onto a much smaller set of distinct border samples, but the generic code still gathers full neighborhoods and builds full kernels. Detect scales where `mult` has saturated one or both image dimensions and route them to an exact degenerate helper, or stop at the last non-degenerate level and fold the remaining work into a cheaper terminal pass. This should particularly help the large-radius local-contrast preset, which spends a disproportionate amount of time in the coarsest scales.

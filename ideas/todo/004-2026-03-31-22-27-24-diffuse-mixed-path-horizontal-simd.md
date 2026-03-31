@@ -1,0 +1,3 @@
+perf: add a peeled horizontal SIMD helper for the active first-plus-fourth CPU path
+
+The proven SIMD work targeted fully isotropic diffusion, but instance 14 spends its time in a mixed path with exactly one LF order and one HF order active. Add a separate peeled interior helper that processes several columns at once for that first-plus-fourth, no-mask configuration while preserving the existing row order and border path. This gives the compiler a much simpler cross-pixel loop than the current generic mixed-order pixel body and avoids paying the control-flow cost of inactive modes.

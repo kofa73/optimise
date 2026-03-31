@@ -1,0 +1,3 @@
+perf: precompute immutable diffuse runtime constants in committed params
+
+`wavelets_process()` recomputes `anisotropy[]`, `isotropy_type[]`, `regularization`, and `variance_threshold` every outer iteration even though they depend only on module parameters. Extend `dt_iop_diffuse_data_t` with a compact runtime block filled once in `commit_params()` and consume that from `process()`/`wavelets_process()`. The direct savings are modest, but it also makes the CPU helper dispatch cleaner and cheaper, which is useful if more targeted fast paths are added for common presets.
