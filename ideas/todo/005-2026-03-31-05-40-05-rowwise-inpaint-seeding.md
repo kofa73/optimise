@@ -1,0 +1,3 @@
+perf: rewrite inpaint_mask as row-wise masked seeding without flat-index divides
+
+Rework `inpaint_mask()` into nested row/column loops and seed noise only for masked spans, so it no longer derives coordinates from a flat `k` index with per-pixel division/modulo and full-frame branching. The gain is smaller than the PDE-path ideas, but this preset always uses masking, and the current initialization path is doing extra scalar work that is easy to remove without hurting readability.
