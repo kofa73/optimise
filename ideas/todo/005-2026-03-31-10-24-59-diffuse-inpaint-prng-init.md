@@ -1,3 +1,0 @@
-perf: remove per-pixel PRNG warmup overhead from inpaint mask seeding
-
-`inpaint_mask` currently rebuilds and warms up RNG state for every masked pixel before producing noise. Replace that with a small deterministic helper that derives the needed state directly from `(row, col)` and emits the Gaussian samples without the repeated splitmix/xoshiro warmup sequence. It only affects the one-time masked initialization pass, so the upside is smaller, but it targets a path this preset always exercises.
