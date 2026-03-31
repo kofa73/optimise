@@ -47,10 +47,12 @@ PROVIDERS = {
     "codex": {
         "cmd_text": lambda model: [
             "codex", "exec", "--model", model,
+            "--skip-git-repo-check",
             "--sandbox", "read-only", "-",
         ],
         "cmd_edit": lambda model: [
             "codex", "exec", "--model", model,
+            "--skip-git-repo-check",
             "--dangerously-bypass-approvals-and-sandbox", "-",
         ],
         "env_cleanup": [],

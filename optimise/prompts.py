@@ -122,12 +122,15 @@ Implement this optimisation idea by editing the target files ({targets}):
    given the current state of the code. If the optimisation has already been applied,
    or the code structure has changed making it infeasible, respond with exactly
    `NOT_APPLICABLE` on the first line, followed by a brief explanation. Do nothing else.
-2. Use Edit to make ONLY the changes described in the idea. Do not refactor other code.
-
+2. Use the available file-editing capability to make ONLY the changes described in the idea.
+   Do not refactor other code.
+3. You may inspect files using whatever read access your environment provides. If your
+   environment only exposes shell commands for file access, you may use them strictly
+   to read files and apply the required edits.
 4. **YOU MUST NOT RUN ANY BUILD COMMANDS. THIS IS FORBIDDEN.**
 5. **YOU MUST NOT RUN ANY TEST COMMANDS. THIS IS PROHIBITED.**
 6. **YOU MUST NOT RUN ANY BENCHMARK COMMANDS. YOU WILL BE PENALIZED.**
-7. **YOU MUST NEVER USE SHELL/BASH TOOLS TO EXECUTE ANYTHING.**
+7. **DO NOT USE SHELL/BASH TO COMPILE CODE, RUN PROGRAMS OR SCRIPTS, INVOKE TESTS, OR BENCHMARK ANYTHING.**
 8. **IF YOU ATTEMPT TO BUILD, TEST, OR BENCHMARK, THE SESSION WILL BE TERMINATED.**
 
 The orchestrator script handles ALL building, testing, and benchmarking
@@ -215,7 +218,9 @@ def build_review_prompt(instructions, done_ideas):
 # Your task
 
 Review all completed experiments above. Update `learnings.md` using the
-Read and Edit tools. The file should have two sections:
+available file read/edit capabilities. If your environment only exposes
+shell commands for file access, you may use them strictly to inspect and
+edit files. The file should have two sections:
 
 ## What works
 Bullet points describing patterns that consistently lead to successful

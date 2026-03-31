@@ -21,18 +21,20 @@ class TestProviderCommands:
         assert cmd[:2] == ["codex", "exec"], "codex text cmd must use 'codex exec'"
         assert "--model" in cmd
         assert "gpt-5.4" in cmd
+        assert "--skip-git-repo-check" in cmd
         assert "--sandbox" in cmd
         assert "read-only" in cmd
         assert cmd[-1] == "-", "trailing '-' for stdin"
 
-    def test_codex_edit_uses_exec_and_yolo(self):
+    def test_codex_edit_uses_exec_and_bypass(self):
         cmd = PROVIDERS["codex"]["cmd_edit"]("gpt-5.4")
         assert cmd[:2] == ["codex", "exec"], "codex edit cmd must use 'codex exec'"
         assert "--model" in cmd
         assert "gpt-5.4" in cmd
+        assert "--skip-git-repo-check" in cmd
         assert "--dangerously-bypass-approvals-and-sandbox" in cmd
         assert cmd[-1] == "-", "trailing '-' for stdin"
-        assert "--sandbox" not in cmd, "yolo flag replaces sandbox"
+        assert "--full-auto" not in cmd
 
     def test_codex_uses_stdin(self):
         assert PROVIDERS["codex"]["uses_stdin"] is True

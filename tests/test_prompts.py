@@ -91,6 +91,16 @@ class TestImplementationPrompt:
         assert "undefined reference to foo" in prompt
         assert "fix" in prompt.lower() or "Fix" in prompt
 
+    def test_allows_shell_only_for_file_access_when_needed(self):
+        prompt = build_implementation_prompt(
+            instructions="", learnings="",
+            idea_content="idea",
+            target_files=["f.c"],
+            errors=None,
+        )
+        assert "only exposes shell commands for file access" in prompt
+        assert "YOU MUST NEVER USE SHELL/BASH TOOLS TO EXECUTE ANYTHING" not in prompt
+
 
 class TestReviewPrompt:
     def test_includes_done_ideas(self):
@@ -104,6 +114,14 @@ class TestReviewPrompt:
         assert "improvement" in prompt
         assert "build failure" in prompt
         assert "learnings.md" in prompt
+
+    def test_uses_provider_agnostic_editing_language(self):
+        prompt = build_review_prompt(
+            instructions="Optimise",
+            done_ideas={"a.md": "Title A\n\nBody"},
+        )
+        assert "available file read/edit capabilities" in prompt
+        assert "Read and Edit tools" not in prompt
 
 
 class TestGenerationPromptTargeting:
