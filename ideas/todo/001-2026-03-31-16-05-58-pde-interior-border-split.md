@@ -1,3 +1,0 @@
-perf: split heat_PDE_diffusion into unclamped interior and border kernels
-
-Peel `heat_PDE_diffusion()` in both dimensions, not just by column, so the large center rectangle runs through a helper with no `MAX/MIN` clamping and no per-pixel boundary coordinate setup. The strong instance is full-frame, unmasked, and iterated many times, so most pixels live in that interior region; removing both x and y clamp work there should cut hot-loop ALU and give the compiler a cleaner vectorizable kernel.
