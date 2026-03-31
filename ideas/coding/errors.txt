@@ -1,0 +1,3 @@
+Code review failed:
+
+`src/iop/diffuse.c`: `decompose_2D_Bspline_diffuse()` and the reconstruction loop in `wavelets_process()` now fold sparse/dense behavior into one generic `DT_OMP_FOR()` path driven by `output_region`/`sparse_plan` runtime checks. That collapses the hot-path specialization boundary the checklist rejects; this should remain split into specialized wrappers around the parallel loop instead of a single branchy helper.
