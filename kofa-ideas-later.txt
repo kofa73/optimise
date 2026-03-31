@@ -1,0 +1,3 @@
+I have observed that re-running the benchmark on the same code on different days, under seemingly similar circumstances can produce 1-2% difference, even though the benchmark uses a loop, and this seems to be consistent -- that is, the new      
+  ideas also appear slower, they are all rejected. If I then check out the last committed version, run a benchmark on it, save the result as the 'current best', and retry the rejected ideas, some get accepted. Commit 7b4b5666e of perf-logs shows   
+  such a change -- the darktable code was not changed, but re-measuring performance yielded different numbers.   
