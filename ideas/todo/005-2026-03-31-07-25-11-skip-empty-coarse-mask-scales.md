@@ -1,0 +1,3 @@
+perf: skip whole coarse scales when the downsampled inpaint mask becomes empty
+
+After generating the per-scale mask, detect scales whose padded active region is empty and bypass their decomposition, PDE, and reconstruction work entirely. Sparse highlight masks often disappear on upper wavelet levels, so this turns a masked inpaint preset into fewer full-image passes rather than a faster version of the same passes, which is usually a better trade for this file’s performance profile.
