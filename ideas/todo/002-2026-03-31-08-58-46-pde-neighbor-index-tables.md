@@ -1,3 +1,0 @@
-perf: precompute per-scale neighbour index tables for the CPU PDE stencil
-
-Before entering the iteration loop, build `prev/center/next` row and column lookup tables for each `mult` used by `heat_PDE_diffusion`, with row entries already multiplied by `width` and optionally by `4`. That removes the per-pixel `MAX/MIN`, row-base multiplication, and repeated `4 * (...)` address formation from the hottest masked path without changing traversal order, convolution math, or OpenCL-only code.
