@@ -1,0 +1,3 @@
+perf: fold the unit-denominator normalization out of zero-regularization inpaint
+
+Add a narrow CPU fast path for the exact preset shape where `data->regularization == 0.f` and `data->variance_threshold == 0.f`, which makes `regularization_factor` zero and the transformed variance denominator a constant `1`. In that case the solver can skip building the variance accumulator entirely and replace `acc[c] / variance[c]` with a straight add, deleting a full reduction and three divides per active pixel while keeping the generic readable path for every other parameter set.
