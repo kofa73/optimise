@@ -1,3 +1,0 @@
-perf: add a no-mask all-isophote CPU fast path for diffuse PDE
-
-Add a dedicated CPU helper for the case where `has_mask == false` and all four orders use `DT_ISOTROPY_ISOPHOTE`, which matches the targeted strong parameters (`anisotropy_* = 1.0`). That path can bypass the generic mixed-mode plumbing in `heat_PDE_diffusion()`, drop unused isotropic/gradient branches, and keep only the math relevant to the benchmarked preset, while preserving the existing generic helper for other parameter combinations.
