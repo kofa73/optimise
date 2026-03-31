@@ -1,3 +1,0 @@
-perf: specialize Bspline decomposition for the finest fixed mult values
-
-Introduce small dedicated CPU helpers for the finest `mult` values that dominate the `radius = 3, radius_center = 0` preset family, such as `mult == 1`, `2`, and `4`, while keeping the generic Bspline path as fallback. Those helpers let the compiler constant-fold offset arithmetic and trim generic loop/setup overhead in `decompose_2D_Bspline()`-driven work that is repeated on every outer iteration for the strong benchmark.
