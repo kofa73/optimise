@@ -1,3 +1,0 @@
-perf: classify mask rows into clear full and mixed PDE fast paths
-
-Build a tiny row-status table once from the boolean mask and dispatch three row kernels in `heat_PDE_diffusion`: clear rows do only the cheap reconstruction, full rows run a branchless masked PDE loop, and mixed rows keep the current per-pixel checks. The inpaint-highlights preset typically touches only part of the image, so this removes many mask loads and branches while preserving readable control flow.
