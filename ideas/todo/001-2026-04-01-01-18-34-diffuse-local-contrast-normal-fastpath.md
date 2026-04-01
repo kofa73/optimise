@@ -1,3 +1,0 @@
-perf: add CPU fast path for no-mask zero-sharpness first-plus-fourth local contrast
-
-Add a dedicated CPU helper for the exact shape of instance 14: `has_mask == false`, `sharpness == 0`, `ABCD[1] == ABCD[2] == 0`, and only 1st/4th orders active. That path can delete the generic four-order plumbing, skip inactive-order setup entirely, and keep only the gradient-driven first-order and laplacian-driven fourth-order math. This matches the “preset-specific helpers only when they cut out large mixed-mode plumbing” learning and targets the weakest-improving benchmark instance directly.
