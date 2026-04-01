@@ -1,0 +1,3 @@
+perf: consume the coarsest wavelet detail immediately after decomposition
+
+In `wavelets_process`, special-case the last `decompose_2D_Bspline()` iteration so the coarsest `HF[scales - 1]` is fed straight into the first CPU `heat_PDE_diffusion()` step instead of being written out, parked, then read back in the reconstruction loop. The coarsest scale has the longest reuse distance and sits at the top of a max-scale run for this preset, so deleting that full-frame write/read round-trip should pay back better than small ALU tweaks.

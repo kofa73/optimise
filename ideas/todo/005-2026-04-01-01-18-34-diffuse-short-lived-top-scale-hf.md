@@ -1,0 +1,3 @@
+perf: keep the coarsest HF scales in short-lived scratch instead of long-lived HF buffers
+
+Treat the top one or two coarsest HF scales as short-lived data: store them in scratch that is consumed immediately when reconstruction begins, while only finer scales remain in the long-lived `HF[]` array. This targets the worst-reuse-distance buffers in the local-contrast preset, cutting heap-backed full-frame traffic and pressure on cache/TLBs without changing traversal order or touching the OpenCL path.
