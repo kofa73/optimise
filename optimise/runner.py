@@ -160,6 +160,12 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
             full_cmd, shell=True,
             capture_output=True, text=True, cwd=cwd,
         )
+        if result.returncode != 0:
+            raise BenchmarkError(
+                f"Benchmark command failed with exit code {result.returncode}.\n"
+                f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+            )
+
         rows = parse_bench_output(result.stdout)
         best = update_element_best(best, rows)
         current_sum = sum_user(best)
@@ -173,6 +179,11 @@ def run_benchmark_loop(bench_cmd, cwd, baseline_user_sum,
             # Check targeted instance — only in instance mode
             instance_exceeded = False
             if target_instance_index is not None and target_instance_baseline is not None:
+                if target_instance_index >= len(best):
+                    raise BenchmarkError(
+                        f"Benchmark returned {len(best)} rows, but "
+                        f"target_instance_index {target_instance_index} is out of range."
+                    )
                 instance_time = best[target_instance_index]["user"]
                 instance_threshold = target_instance_baseline * (1 - early_abort_pct / 100)
                 instance_exceeded = instance_time > instance_threshold

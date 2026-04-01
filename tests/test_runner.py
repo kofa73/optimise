@@ -324,6 +324,40 @@ echo $((COUNT + 1)) > {state_file}
             assert "timeout" not in call.kwargs, \
                 f"subprocess.run called with timeout={call.kwargs['timeout']}"
 
+    def test_benchmark_error_on_non_zero_exit_code(self, tmp_path):
+        """Benchmark returns non-zero exit code → BenchmarkError."""
+        script = tmp_path / "fail.sh"
+        script.write_text("#!/bin/bash\necho user=1.0\nexit 1\n")
+        script.chmod(0o755)
+        with pytest.raises(BenchmarkError) as exc_info:
+            run_benchmark_loop(
+                bench_cmd=str(script), cwd=str(tmp_path),
+                baseline_user_sum=100.0,
+                num_warmup=0,
+                convergence_threshold_pct=0.1,
+                convergence_tail_runs=3,
+                early_abort_pct=5,
+            )
+        assert "Benchmark command failed with exit code 1" in str(exc_info.value)
+
+    def test_index_error_on_fewer_rows_than_target(self, tmp_path):
+        """Benchmark returns fewer rows than target_instance_index → error, not crash."""
+        # baseline had 21 rows, but now returns only 5
+        outputs = ["user=1.000\n"] * 5
+        cmd = self._make_bench_script(tmp_path, outputs)
+        with pytest.raises(BenchmarkError) as exc_info:
+            run_benchmark_loop(
+                bench_cmd=cmd, cwd=str(tmp_path),
+                baseline_user_sum=100.0,
+                num_warmup=0,
+                convergence_threshold_pct=0.1,
+                convergence_tail_runs=3,
+                early_abort_pct=5,
+                target_instance_index=10,  # Points beyond 5 rows
+                target_instance_baseline=5.0,
+            )
+        assert "target_instance_index 10 is out of range" in str(exc_info.value)
+
 
 from optimise.runner import parse_generated_ideas
 

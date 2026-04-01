@@ -577,9 +577,23 @@ def _do_build_test_benchmark(s, retries_left):
     except BenchmarkError as e:
         log.error(f"Benchmark error: {e}")
         if e.rows:
+            # Performance-based early abort - final failure for this idea
             return _fail_idea(s, f"benchmark early abort: {e}",
                               bench_rows=e.rows)
-        return _fail_idea(s, "benchmark error")
+
+        # Benchmark crashed or failed to parse - treat as a bug to be fixed
+        move_idea(s.script_repo, s.idea_file, "testing", "coding")
+        errors_path = os.path.join(s.script_repo, "ideas", "coding", "errors.txt")
+        with open(errors_path, "w") as f:
+            f.write(str(e))
+
+        retries_left -= 1
+        if retries_left > 0:
+            log.info(f"Benchmark CRASHED - retrying (retries left: {retries_left})")
+            return {"consecutive_perf_failures": s.consecutive_perf_failures,
+                    "retry_code": True, "retries_left": retries_left}
+
+        return _fail_idea(s, "benchmark crash/error exhausted", explanation=str(e))
 
     # Evaluate
     ok, improvement_pct, detail = evaluate_success(

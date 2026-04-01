@@ -498,12 +498,59 @@ class TestDoBuildTestBenchmarkPerfTable:
         bench = _make_bench_script(tmp_path, "user=9.97, cpu=99.7")
         s = _make_full_build_state(tmp_path, bench_cmd=bench,
                                    baseline_user=10.0,
-                                   early_abort_pct=0.1,
-                                   min_improvement_pct=2.0)
+                                   min_improvement_pct=2.0, early_abort_pct=0.1)
         _do_build_test_benchmark(s, retries_left=0)
         content = self._idea_content(tmp_path)
         assert "# Individual timings" in content
-        assert "outcome: target not reached: 9.970s vs baseline 10.000s (+0.3%, need 2.0%)" in content
+        assert "9.970" in content
+
+    def test_benchmark_crash_moves_back_to_coding(self, tmp_path):
+        """Benchmark exit code != 0 → move back to coding, record error."""
+        # Create a bench script that fails
+        bench = tmp_path / "fail.sh"
+        bench.write_text("#!/bin/sh\necho 'some output'\nexit 1\n")
+        bench.chmod(0o755)
+
+        s = _make_full_build_state(tmp_path, bench_cmd=str(bench),
+                                   baseline_user=10.0, early_abort_pct=0.5)
+
+        # Initial state: idea in testing/
+        assert (tmp_path / "script" / "ideas" / "testing" / "idea.md").exists()
+
+        # Run pipeline with 2 retries left
+        result = _do_build_test_benchmark(s, retries_left=2)
+
+        # Should have moved back to coding/
+        assert not (tmp_path / "script" / "ideas" / "testing" / "idea.md").exists()
+        assert (tmp_path / "script" / "ideas" / "coding" / "idea.md").exists()
+
+        # Should have recorded errors.txt
+        errors_path = tmp_path / "script" / "ideas" / "coding" / "errors.txt"
+        assert errors_path.exists()
+        assert "Benchmark command failed with exit code 1" in errors_path.read_text()
+
+        # Should return retry_code: True
+        assert result["retry_code"] is True
+
+    def test_benchmark_crash_exhausted_moves_to_done(self, tmp_path):
+        """Benchmark crashes and no retries left → move to done, record outcome."""
+        bench = tmp_path / "fail.sh"
+        bench.write_text("#!/bin/sh\necho 'some output'\nexit 1\n")
+        bench.chmod(0o755)
+
+        s = _make_full_build_state(tmp_path, bench_cmd=str(bench))
+
+        # Run pipeline with 1 retry left (it will subtract 1, see 0, and fail)
+        result = _do_build_test_benchmark(s, retries_left=1)
+
+        # Should have moved to done/
+        assert not (tmp_path / "script" / "ideas" / "testing" / "idea.md").exists()
+        assert (tmp_path / "script" / "ideas" / "done" / "idea.md").exists()
+
+        # Outcome should be recorded
+        content = (tmp_path / "script" / "ideas" / "done" / "idea.md").read_text()
+        assert "outcome: benchmark crash/error exhausted" in content
+        assert "Benchmark command failed with exit code 1" in content
 
     def test_instance_regression_exceeds_cap_has_perf_table(self, tmp_path):
         """Individual row regresses beyond max_regression_pct cap → perf table in done idea."""

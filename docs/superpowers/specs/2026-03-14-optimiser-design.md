@@ -359,7 +359,7 @@ The orchestrator handles benchmark repetition and convergence. The external scri
    - Store as element-wise best.
    - Early abort: if `sum(user) > baseline_sum * (1 - early_abort_pct / 100)`, the first run doesn't meet the early abort threshold — abort benchmark, report failure. This catches both regressions and insufficient improvements, avoiding ~30 min of futile convergence runs. The `BenchmarkError` carries the partial rows so they can be recorded on the idea file. Note: `early_abort_pct` is typically set lower than `min_improvement_pct` — it's a quick-reject to save time, not the final acceptance gate.
 3. **Subsequent runs:**
-   - Parse output. If output cannot be parsed (missing `user`, wrong number of lines, malformed values), treat as benchmark parse error → FAIL_IDEA (outcome: "benchmark error").
+   - Parse output. If the benchmark command fails (non-zero exit code) or output cannot be parsed (missing `user`, wrong number of lines, malformed values, or out-of-range instance index), treat as a retriable benchmark crash/error. The error details are saved to `errors.txt` and the idea loops back to CODE if retries remain.
    - Update element-wise best (per-row minimum for each label).
    - Compute improvement: compare current `sum(user)` of element-wise bests against the `sum(user)` of element-wise bests at the point when the tail counter was last reset (or first run, if never reset).
    - If improvement < `benchmark_convergence_threshold_pct`: increment tail counter.
@@ -560,7 +560,10 @@ BENCHMARK
   success → SUCCESS_IDEA
   failure (performance target not met) → FAIL_IDEA (outcome: "target not reached")
   failure (early abort) → FAIL_IDEA (outcome: "benchmark early abort: <error details>")
-  failure (parse error) → FAIL_IDEA (outcome: "benchmark error")
+  failure (parse error/crash) →
+    save error to ideas/coding/errors.txt
+    retries remaining? → move idea back to ideas/coding/, → CODE
+    retries exhausted → FAIL_IDEA (outcome: "benchmark crash/error exhausted")
 
 SUCCESS_IDEA
   commit target repo (only files under `commit_scope` prefixes):
@@ -580,7 +583,7 @@ FAIL_IDEA
   if benchmark ran (incl. early abort): append perf table to idea file
   commit script repo
   increment consecutive perf failure counter (only for "target not reached";
-    NOT for "build failure", "quality regression", "benchmark early abort: ...", or "benchmark error")
+    NOT for "build failure", "quality regression", "benchmark early abort: ...", or "benchmark crash/error exhausted")
   → CHECK_TERMINATION
 
 CHECK_TERMINATION (after CODE/TEST)
