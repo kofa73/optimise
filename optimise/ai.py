@@ -14,11 +14,13 @@ PROVIDERS = {
     "claude": {
         "cmd_text": lambda model: [
             "claude", "--print", "--model", model,
-            "--dangerously-skip-permissions", "--verbose",
+            "--dangerously-skip-permissions", "--disable-slash-commands",
+            "--verbose",
         ],
         "cmd_edit": lambda model: [
             "claude", "--print", "--model", model,
-            "--dangerously-skip-permissions", "--verbose",
+            "--dangerously-skip-permissions", "--disable-slash-commands",
+            "--verbose",
             "--allowedTools", "Read", "Edit",
         ],
         "env_cleanup": ["CLAUDECODE"],
@@ -30,11 +32,11 @@ PROVIDERS = {
     },
     "gemini": {
         "cmd_text": lambda model: [
-            "gemini", "--model", model,
+            "gemini", "-e", "noneAtAll", "--model", model,
             "-p", "Follow the instructions in the provided text.",
         ],
         "cmd_edit": lambda model: [
-            "gemini", "--model", model, "--approval-mode=yolo",
+            "gemini", "-e", "noneAtAll", "--model", model, "--approval-mode=yolo",
             "-p", "Follow the instructions in the provided text.",
         ],
         "env_cleanup": [],

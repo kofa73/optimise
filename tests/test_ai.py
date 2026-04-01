@@ -8,6 +8,22 @@ from optimise.ai import AIRouter, PROVIDERS, get_version
 
 
 class TestProviderCommands:
+    def test_claude_commands_match_expected_shape(self):
+        text_cmd = PROVIDERS["claude"]["cmd_text"]("sonnet")
+        edit_cmd = PROVIDERS["claude"]["cmd_edit"]("sonnet")
+
+        assert text_cmd == [
+            "claude", "--print", "--model", "sonnet",
+            "--dangerously-skip-permissions", "--disable-slash-commands",
+            "--verbose",
+        ]
+        assert edit_cmd == [
+            "claude", "--print", "--model", "sonnet",
+            "--dangerously-skip-permissions", "--disable-slash-commands",
+            "--verbose",
+            "--allowedTools", "Read", "Edit",
+        ]
+
     def test_gemini_text_uses_noninteractive_flag(self):
         cmd = PROVIDERS["gemini"]["cmd_text"]("pro")
         assert "-p" in cmd, "gemini text cmd must use -p for non-interactive mode"
@@ -15,6 +31,13 @@ class TestProviderCommands:
     def test_gemini_edit_uses_noninteractive_flag(self):
         cmd = PROVIDERS["gemini"]["cmd_edit"]("pro")
         assert "-p" in cmd, "gemini edit cmd must use -p for non-interactive mode"
+
+    def test_gemini_disables_extensions_for_automation(self):
+        text_cmd = PROVIDERS["gemini"]["cmd_text"]("pro")
+        edit_cmd = PROVIDERS["gemini"]["cmd_edit"]("pro")
+
+        assert text_cmd[:3] == ["gemini", "-e", "noneAtAll"]
+        assert edit_cmd[:3] == ["gemini", "-e", "noneAtAll"]
 
     def test_codex_text_uses_exec_and_sandbox(self):
         cmd = PROVIDERS["codex"]["cmd_text"]("gpt-5.4")
