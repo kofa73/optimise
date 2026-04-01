@@ -1101,6 +1101,20 @@ class TestDoCodeReview:
         _, kwargs = ai.call.call_args
         assert kwargs["timeout"] == 120
 
+    def test_passes_prompt(self):
+        from optimise.cli import _do_code_review
+        ai = MagicMock()
+        ai.call.return_value = ("LGTM", 0, "test-provider")
+        target_git = MagicMock()
+        target_git.diff_scope.return_value = "some diff"
+        settings = {"commit_scope": ["src/"], "llm_timeout": 60}
+
+        with patch("optimise.cli.build_code_review_prompt", return_value="test-prompt"):
+            _do_code_review(target_git, ai, settings, "Optimise.", "idea")
+
+        args, _ = ai.call.call_args
+        assert args[0] == "test-prompt"
+
 class TestComputeTarget:
     """_compute_target sets targeting state in settings dict."""
 

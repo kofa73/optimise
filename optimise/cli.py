@@ -760,6 +760,7 @@ def _do_code_review(target_git, ai, settings, instructions, idea_content):
 
     prompt = build_code_review_prompt(instructions, diff, idea_content)
     output, rc, provider = ai.call(
+        prompt,
         timeout=settings["llm_timeout"],
         purpose="reviewing code changes",
     )
