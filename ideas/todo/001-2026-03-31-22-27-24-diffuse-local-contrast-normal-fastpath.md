@@ -1,0 +1,3 @@
+perf: add no-mask local-contrast-normal CPU PDE fast path
+
+For instance 14 the hot path is fixed: `has_mask == FALSE`, `sharpness == 0`, only 1st and 4th orders are active, and both use the same negative anisotropy. Add a dedicated helper for that shape so `heat_PDE_diffusion()` computes only one LF gradient tensor and one HF laplacian tensor, builds only the two needed kernels, skips the generic 4-order arrays/loops, and folds the `strength == 1` reconstruction directly into the output. This matches the one preset-specific helper pattern that has already paid off, but targets the currently underperforming local-contrast preset instead of the all-isophote case.
