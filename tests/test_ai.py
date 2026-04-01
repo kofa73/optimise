@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import pytest
 from unittest.mock import patch, MagicMock
-from optimise.ai import AIRouter, PROVIDERS, get_version
+from optimise.ai import AIRouter, PROVIDERS, PURPOSE_TIERS, get_version
 
 
 class TestProviderCommands:
@@ -67,6 +67,16 @@ class TestProviderCommands:
         assert PROVIDERS["codex"]["models"]["normal"] == "gpt-5.4-mini"
 
 
+class TestPurposeTiers:
+    def test_known_purposes_have_expected_tiers(self):
+        assert PURPOSE_TIERS == {
+            "generating ideas": "best",
+            "implementing idea": "best",
+            "reviewing code changes": "normal",
+            "reviewing learnings": "best",
+        }
+
+
 @pytest.mark.skipif(
     not shutil.which("gemini"),
     reason="gemini CLI not installed",
@@ -89,10 +99,10 @@ class TestGeminiIntegration:
         router = AIRouter(providers=["gemini"])
         stdout, rc, provider = router.call(
             prompt,
-            tier="normal",
             timeout=120,
             allow_edits=True,
             cwd=str(tmp_path),
+            purpose="implementing idea",
         )
         assert rc == 0, f"gemini exited with rc={rc}"
 
@@ -128,10 +138,10 @@ class TestClaudeIntegration:
         router = AIRouter(providers=["claude"])
         stdout, rc, provider = router.call(
             prompt,
-            tier="normal",
             timeout=120,
             allow_edits=True,
             cwd=str(tmp_path),
+            purpose="implementing idea",
         )
         assert rc == 0, f"claude exited with rc={rc}"
 
@@ -167,10 +177,10 @@ class TestCodexIntegration:
         router = AIRouter(providers=["codex"])
         stdout, rc, provider = router.call(
             prompt,
-            tier="normal",
             timeout=120,
             allow_edits=True,
             cwd=str(tmp_path),
+            purpose="implementing idea",
         )
         assert rc == 0, f"codex exited with rc={rc}"
 
@@ -250,7 +260,7 @@ class TestVersionWarnings:
         ]
         import logging
         with caplog.at_level(logging.WARNING):
-            router.call("test", allow_edits=False)
+            router.call("test", allow_edits=False, purpose="generating ideas")
         assert any("consider updating the script" in r.message for r in caplog.records)
 
 
@@ -303,10 +313,23 @@ class TestAIRouter:
     def test_call_returns_stdout_on_success(self, mock_run, mock_which):
         mock_run.return_value = MagicMock(stdout="result text", returncode=0)
         router = AIRouter(providers=["claude"])
-        stdout, rc, provider = router.call("test prompt", allow_edits=False)
+        stdout, rc, provider = router.call(
+            "test prompt", allow_edits=False, purpose="generating ideas")
         assert stdout == "result text"
         assert rc == 0
         assert provider == "claude"
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    def test_call_requires_purpose(self, mock_which):
+        router = AIRouter(providers=["claude"])
+        with pytest.raises(TypeError):
+            router.call("test prompt", allow_edits=False)
+
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    def test_call_rejects_unknown_purpose(self, mock_which):
+        router = AIRouter(providers=["claude"])
+        with pytest.raises(ValueError, match="Unknown AI call purpose"):
+            router.call("test prompt", allow_edits=False, purpose="unknown")
 
     @patch("optimise.ai.get_version", return_value=None)
     @patch("shutil.which", return_value="/usr/bin/fake")
@@ -317,7 +340,8 @@ class TestAIRouter:
             MagicMock(stdout="", returncode=1),
             MagicMock(stdout="", returncode=1),
         ]
-        stdout, rc, provider = router.call("test", allow_edits=False)
+        stdout, rc, provider = router.call(
+            "test", allow_edits=False, purpose="generating ideas")
         assert stdout == ""
         assert rc == 1
         assert provider is None
@@ -335,7 +359,8 @@ class TestProvidersRetryLimit:
             MagicMock(stdout="", returncode=1),
         ]
         with patch("time.sleep") as mock_sleep:
-            stdout, rc, provider = router.call("test", allow_edits=False)
+            stdout, rc, provider = router.call(
+                "test", allow_edits=False, purpose="generating ideas")
         assert stdout == ""
         assert rc == 1
         assert provider is None
@@ -350,7 +375,8 @@ class TestProvidersRetryLimit:
         router = AIRouter(providers=["claude"], providers_retry_limit=2)
         mock_run.return_value = MagicMock(stdout="", returncode=1)
         with patch("time.sleep") as mock_sleep:
-            stdout, rc, provider = router.call("test", allow_edits=False)
+            stdout, rc, provider = router.call(
+                "test", allow_edits=False, purpose="generating ideas")
         assert stdout == ""
         assert rc == 1
         assert provider is None
@@ -370,7 +396,8 @@ class TestProvidersRetryLimit:
             MagicMock(stdout="ok", returncode=0),  # retry cycle: success
         ]
         with patch("time.sleep") as mock_sleep:
-            stdout, rc, provider = router.call("test", allow_edits=False)
+            stdout, rc, provider = router.call(
+                "test", allow_edits=False, purpose="generating ideas")
         assert stdout == "ok"
         assert rc == 0
         assert provider == "claude"
@@ -388,18 +415,6 @@ class TestCallPurpose:
         with caplog.at_level(logging.INFO):
             router.call("test", allow_edits=False, purpose="generating ideas")
         assert any("generating ideas" in r.message for r in caplog.records)
-
-    @patch("shutil.which", return_value="/usr/bin/claude")
-    @patch("subprocess.run")
-    def test_no_purpose_omits_label(self, mock_run, mock_which, caplog):
-        mock_run.return_value = MagicMock(stdout="ok", returncode=0)
-        router = AIRouter(providers=["claude"])
-        import logging
-        with caplog.at_level(logging.INFO):
-            router.call("test", allow_edits=False)
-        ai_log = [r for r in caplog.records if r.message.startswith("AI:")]
-        assert ai_log
-        assert "None" not in ai_log[0].message
 
 
 class TestRateLimiting:
@@ -421,7 +436,7 @@ class TestRateLimiting:
         mock_run.return_value = MagicMock(stdout="ok", returncode=0)
         router = AIRouter(providers=["claude"])
         with patch("time.sleep") as mock_sleep:
-            router.call("test", allow_edits=False)
+            router.call("test", allow_edits=False, purpose="generating ideas")
         mock_sleep.assert_not_called()
 
     @patch("shutil.which", return_value="/usr/bin/claude")
@@ -435,7 +450,7 @@ class TestRateLimiting:
         with patch("time.time", return_value=now), \
              patch("time.sleep") as mock_sleep, \
              patch("random.uniform", return_value=75.0) as mock_rand:
-            router.call("test", allow_edits=False)
+            router.call("test", allow_edits=False, purpose="generating ideas")
             mock_rand.assert_called_once_with(30, 120)
             mock_sleep.assert_called_once_with(75.0)
 
@@ -449,7 +464,7 @@ class TestRateLimiting:
         router._last_call_finish_time["claude"] = now - 120  # 120s ago
         with patch("time.time", return_value=now), \
              patch("time.sleep") as mock_sleep:
-            router.call("test", allow_edits=False)
+            router.call("test", allow_edits=False, purpose="generating ideas")
         mock_sleep.assert_not_called()
 
     @patch("shutil.which", return_value="/usr/bin/claude")
@@ -458,7 +473,7 @@ class TestRateLimiting:
         mock_run.return_value = MagicMock(stdout="ok", returncode=0)
         router = AIRouter(providers=["claude"])
         with patch("time.time", return_value=5000.0):
-            router.call("test", allow_edits=False)
+            router.call("test", allow_edits=False, purpose="generating ideas")
         assert router._last_call_finish_time["claude"] == 5000.0
 
     @patch("shutil.which", return_value="/usr/bin/claude")
@@ -473,5 +488,5 @@ class TestRateLimiting:
              patch("time.sleep"), \
              patch("random.uniform", return_value=60.0), \
              caplog.at_level(logging.INFO):
-            router.call("test", allow_edits=False)
+            router.call("test", allow_edits=False, purpose="generating ideas")
         assert any("cooling off" in r.message.lower() for r in caplog.records)

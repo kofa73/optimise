@@ -12,7 +12,7 @@ The system runs a **Continuous Optimization Loop** with the following lifecycle:
 
 1. **Creation (`ideas/todo`)**: When the idea queue is empty, the LLM reads `instructions.md` and `learnings.md` to generate a batch of new optimization ideas, ordered by expected improvement (most impactful first). Each idea filename is prefixed with an ordinal number and timestamp for deterministic execution order.
 2. **Coding (`ideas/coding`)**: The next idea is selected. The LLM modifies the specified files in the `target_repo`.
-3. **Code Review**: A cheaper LLM (normal tier) reviews the diff against a narrow checklist: stale comments, giant macro misuse, unswitched code duplication, specialization-boundary regressions (for example moving `DT_OMP_FOR()` into a generic helper that takes hot-path flags as parameters), and OpenCL contamination. If rejected, feedback is sent back to the coding LLM for a retry.
+3. **Code Review**: A cheaper LLM reviews the diff against a narrow checklist: stale comments, giant macro misuse, unswitched code duplication, specialization-boundary regressions (for example moving `DT_OMP_FOR()` into a generic helper that takes hot-path flags as parameters), and OpenCL contamination. If rejected, feedback is sent back to the coding LLM for a retry.
 4. **Testing (`ideas/testing`)**: The system runs the user-configured build and quality checks. If either fails, the error logs are provided to the LLM to attempt a fix.
 5. **Benchmarking**: If the build and quality checks pass, the changes are benchmarked. A convergence loop is used to measure the performance difference against the current baseline.
 6. **Done (`ideas/done`)**:
@@ -24,8 +24,11 @@ When the idea queue is empty and completed ideas exist, a **Strategy Review** ru
 ## Prerequisites
 
 Before using Optimiser, ensure the following:
-1. **AI CLI Tools**: You must have at least one of `claude` (Claude Code) or `gemini` (Gemini CLI) installed and authenticated on your system.
+1. **AI CLI Tools**: Optimiser supports `claude` (Claude Code), `gemini` (Gemini CLI), and `codex` (Codex CLI). At least one supported provider must be installed and authenticated on your system. Providers whose CLI binaries are not installed are disabled automatically.
 2. **Project Environment**: Your target project must be fully buildable and testable from the command line. Ensure all dependencies, virtual environments, and system libraries required by your build, benchmark, and quality check commands are installed and configured.
+
+> **Warning**
+> Running Optimiser inside a container is strongly recommended. It reduces the risk of polluting your host environment, makes AI-driven edits and build tooling more reproducible, and gives you a safer isolation boundary when provider CLIs are allowed to modify code and run project commands.
 
 ## User Instructions
 

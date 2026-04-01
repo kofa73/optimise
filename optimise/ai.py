@@ -10,6 +10,14 @@ import logging
 
 log = logging.getLogger("optimiser")
 
+# Purpose is the public routing contract. Callers provide purpose, not tier.
+PURPOSE_TIERS = {
+    "generating ideas": "best",
+    "implementing idea": "best",
+    "reviewing code changes": "normal",
+    "reviewing learnings": "best",
+}
+
 PROVIDERS = {
     "claude": {
         "cmd_text": lambda model: [
@@ -143,12 +151,16 @@ class AIRouter:
     def has_providers(self):
         return len(self.providers) > 0
 
-    def call(self, prompt, tier="best", timeout=600, allow_edits=False,
-             cwd=None, purpose=None):
-        """Call an AI provider with bounded retry on full exhaustion.
+    def call(self, prompt, *, purpose, timeout=600, allow_edits=False,
+             cwd=None):
+        """Call an AI provider for a named purpose with bounded failover.
 
         Returns (stdout, exit_code, provider_name).
         """
+        tier = PURPOSE_TIERS.get(purpose)
+        if tier is None:
+            raise ValueError(f"Unknown AI call purpose: {purpose!r}")
+
         retries_used = 0
         while True:
             provider_name = (
@@ -175,7 +187,7 @@ class AIRouter:
                          f"(last call finished {elapsed:.0f}s ago)")
                 time.sleep(delay)
 
-            stdout, rc = self._invoke(provider_name, prompt, tier, timeout,
+            stdout, rc = self._invoke(provider_name, prompt, timeout,
                                       allow_edits, cwd, purpose)
             self._last_call_finish_time[provider_name] = time.time()
 
@@ -191,9 +203,10 @@ class AIRouter:
                 )
             self.disable_provider(provider_name)
 
-    def _invoke(self, provider_name, prompt, tier, timeout, allow_edits, cwd,
-                purpose=None):
+    def _invoke(self, provider_name, prompt, timeout, allow_edits, cwd,
+                purpose):
         spec = PROVIDERS[provider_name]
+        tier = PURPOSE_TIERS[purpose]
         model = spec["models"][tier]
 
         if allow_edits:
@@ -205,8 +218,8 @@ class AIRouter:
         for var in spec["env_cleanup"]:
             env.pop(var, None)
 
-        label = f" for {purpose}" if purpose else ""
-        log.info(f"AI: calling {provider_name}/{model}{label} (edits={allow_edits})")
+        log.info(f"AI: calling {provider_name}/{model} for {purpose} "
+                 f"(edits={allow_edits})")
 
         try:
             kwargs = dict(

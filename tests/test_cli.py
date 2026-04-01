@@ -1077,30 +1077,6 @@ class TestDoCodeReview:
         assert feedback == ""
         ai.call.assert_not_called()
 
-    def test_uses_normal_tier(self):
-        from optimise.cli import _do_code_review
-        ai = MagicMock()
-        ai.call.return_value = ("LGTM", 0, "test-provider")
-        target_git = MagicMock()
-        target_git.diff_scope.return_value = "some diff"
-        settings = {"commit_scope": ["src/"], "llm_timeout": 60}
-
-        _do_code_review(target_git, ai, settings, "Optimise.", "idea")
-        _, kwargs = ai.call.call_args
-        assert kwargs["tier"] == "normal"
-
-    def test_passes_llm_timeout(self):
-        from optimise.cli import _do_code_review
-        ai = MagicMock()
-        ai.call.return_value = ("LGTM", 0, "test-provider")
-        target_git = MagicMock()
-        target_git.diff_scope.return_value = "some diff"
-        settings = {"commit_scope": ["src/"], "llm_timeout": 120}
-
-        _do_code_review(target_git, ai, settings, "Optimise.", "idea")
-        _, kwargs = ai.call.call_args
-        assert kwargs["timeout"] == 120
-
     def test_passes_purpose(self):
         from optimise.cli import _do_code_review
         ai = MagicMock()
@@ -1113,6 +1089,17 @@ class TestDoCodeReview:
         _, kwargs = ai.call.call_args
         assert kwargs["purpose"] == "reviewing code changes"
 
+    def test_passes_llm_timeout(self):
+        from optimise.cli import _do_code_review
+        ai = MagicMock()
+        ai.call.return_value = ("LGTM", 0, "test-provider")
+        target_git = MagicMock()
+        target_git.diff_scope.return_value = "some diff"
+        settings = {"commit_scope": ["src/"], "llm_timeout": 120}
+
+        _do_code_review(target_git, ai, settings, "Optimise.", "idea")
+        _, kwargs = ai.call.call_args
+        assert kwargs["timeout"] == 120
 
 class TestComputeTarget:
     """_compute_target sets targeting state in settings dict."""

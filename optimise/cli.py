@@ -255,7 +255,7 @@ def _generate_ideas(directory, settings, ai, target_repo_path, instructions, tar
         targeting=targeting,
     )
     output, rc, provider = ai.call(
-        prompt, tier="best", cwd=target_repo_path,
+        prompt, cwd=target_repo_path,
         timeout=settings["llm_timeout"], purpose="generating ideas",
     )
     if rc != 0:
@@ -460,7 +460,7 @@ def do_run(directory):
             )
             log.info(f"[CODE] Implementing idea: {idea_title[:80]}")
             output, rc, provider = ai.call(
-                prompt, tier="best", cwd=target_repo_path, allow_edits=True,
+                prompt, cwd=target_repo_path, allow_edits=True,
                 timeout=settings["llm_timeout"], purpose="implementing idea",
             )
 
@@ -760,7 +760,6 @@ def _do_code_review(target_git, ai, settings, instructions, idea_content):
 
     prompt = build_code_review_prompt(instructions, diff, idea_content)
     output, rc, provider = ai.call(
-        prompt, tier="normal",
         timeout=settings["llm_timeout"],
         purpose="reviewing code changes",
     )
@@ -792,7 +791,7 @@ def _do_review(directory, script_git, ai, instructions, target_repo_path,
     timeout = settings["llm_timeout"] if settings else 600
     prompt = build_review_prompt(instructions, done_ideas)
     output, rc, provider = ai.call(
-        prompt, tier="best", cwd=directory, allow_edits=True,
+        prompt, cwd=directory, allow_edits=True,
         timeout=timeout, purpose="reviewing learnings",
     )
     if rc == 0:
