@@ -11,7 +11,7 @@ from optimise.cli import (
 )
 from optimise.runner import StartupState
 from optimise.git import GitRepo
-from optimise.benchmark import format_perf_log
+from optimise.benchmark import BenchmarkEvaluation, format_perf_log
 
 
 class TestInit:
@@ -440,36 +440,75 @@ class TestFailIdea:
                    bench_rows=partial)
         assert result["consecutive_perf_failures"] == 0
 
-    def test_fail_idea_target_not_reached_instance_mode(self, tmp_path, monkeypatch):
-        """In instance mode, failure message should correctly report instance improvement."""
-        import optimise.cli
-        s = _make_build_state(tmp_path)
-        s.settings["targeting_mode"] = "least_improved_instance"
-        s.settings["_target_instance_index"] = 0
-        
-        # Mock evaluate_success to return a specific detail
-        def mock_evaluate_success(*args, **kwargs):
-            return False, 0.1, "Below minimum improvement on targeted instance 0: 0.10% < 0.5%"
-        
-        monkeypatch.setattr(optimise.cli, "evaluate_success", mock_evaluate_success)
-        
-        # Mock run_benchmark_loop to return 'best'
-        best = [{"user": 9.99, "cpu": 99.9}]
-        monkeypatch.setattr(optimise.cli, "run_benchmark_loop", lambda *a, **kw: best)
-        
-        # I need to trigger the failure path in do_run or similar, or just test the logic that calls _fail_idea
-        # do_run is too big. Let's look at where evaluate_success is called. It's in do_run (StartupState.BENCHMARK) or similar.
-        # Actually it's in the loop in do_run.
-        
-        # Let's just test that if we use the detail in the failure message it's better.
-        # Wait, the current code in do_run does:
-        # msg = f"target not reached: {result_sum:.3f}s vs baseline {baseline_sum:.3f}s ({improvement_pct:+.1f}%, need {need}%)"
-        
-        # If improvement_pct is 0.1, msg will be "target not reached: 9.990s vs baseline 10.000s (+0.1%, need 0.5%)"
-        # This is slightly better than the success case because it doesn't say "Reduced sum(user)", 
-        # but it still labels 0.1% (instance improvement) next to sum timings.
-        
-        # I should probably just make it use `detail`.
+class TestBenchmarkOutcomeFormatting:
+    def test_instance_success_summary_includes_allowed_overall_regression(self):
+        outcome = BenchmarkEvaluation(
+            success=True,
+            target_scope="instance",
+            target_instance_index=14,
+            target_baseline=9.881,
+            target_result=9.140,
+            target_improvement_pct=7.5,
+            overall_baseline=163.578,
+            overall_result=163.900,
+            overall_improvement_pct=-0.2,
+            failure_reason=None,
+            detail="",
+        )
+
+        summary = optimise.cli._format_evaluation_summary(outcome)
+
+        assert "instance 14" in summary.lower()
+        assert "9.881s to 9.140s" in summary
+        assert "(+7.5% improvement)" in summary
+        assert "regressed sum(user) from 163.578s to 163.900s (~-0.2%)" in summary
+
+    def test_instance_failure_summary_includes_both_metrics_and_failed_gate(self):
+        outcome = BenchmarkEvaluation(
+            success=False,
+            target_scope="instance",
+            target_instance_index=14,
+            target_baseline=9.881,
+            target_result=9.140,
+            target_improvement_pct=7.5,
+            overall_baseline=163.578,
+            overall_result=163.176,
+            overall_improvement_pct=0.2,
+            failure_reason="overall_regression_cap",
+            detail="",
+        )
+
+        summary = optimise.cli._format_failed_evaluation(
+            outcome,
+            min_improvement_pct=3.0,
+        )
+
+        assert summary.startswith("target not reached:")
+        assert "instance 14 improved from 9.881s to 9.140s (+7.5%, need 3.0%)" in summary
+        assert "overall sum(user) improved from 163.578s to 163.176s (+0.2%)" in summary
+        assert "failed gate: overall regression cap" in summary
+
+    def test_overall_failure_summary_keeps_existing_format(self):
+        outcome = BenchmarkEvaluation(
+            success=False,
+            target_scope="overall",
+            target_instance_index=None,
+            target_baseline=10.0,
+            target_result=9.95,
+            target_improvement_pct=0.5,
+            overall_baseline=10.0,
+            overall_result=9.95,
+            overall_improvement_pct=0.5,
+            failure_reason="below_target_threshold",
+            detail="",
+        )
+
+        summary = optimise.cli._format_failed_evaluation(
+            outcome,
+            min_improvement_pct=1.0,
+        )
+
+        assert summary == "target not reached: 9.950s vs baseline 10.000s (+0.5%, need 1.0%)"
 
 
 

@@ -1,5 +1,6 @@
 # optimise/benchmark.py
 """Benchmark output parsing, convergence loop, and performance evaluation."""
+from dataclasses import dataclass
 import re
 
 
@@ -13,6 +14,36 @@ class BenchmarkError(Exception):
     def __init__(self, message, rows=None):
         super().__init__(message)
         self.rows = rows
+
+
+@dataclass
+class BenchmarkEvaluation:
+    """Structured result from benchmark success evaluation.
+
+    Iteration support preserves the historical `(ok, improvement_pct, detail)`
+    unpacking shape used by older callers and tests.
+    """
+
+    success: bool
+    target_scope: str
+    target_instance_index: int | None
+    target_baseline: float
+    target_result: float
+    target_improvement_pct: float
+    overall_baseline: float
+    overall_result: float
+    overall_improvement_pct: float
+    failure_reason: str | None
+    detail: str
+
+    @property
+    def improvement_pct(self):
+        return self.target_improvement_pct
+
+    def __iter__(self):
+        yield self.success
+        yield self.improvement_pct
+        yield self.detail
 
 
 def parse_bench_output(text):
@@ -153,8 +184,8 @@ def evaluate_success(baseline_rows, result_rows, min_improvement_pct, max_regres
         target_instance_index: row index of targeted instance (instance mode only)
 
     Returns:
-        (success: bool, improvement_pct: float, detail: str)
-        improvement_pct is always relative to the target measure.
+        BenchmarkEvaluation. It can also still be unpacked like the historical
+        `(success, improvement_pct, detail)` tuple.
     """
     baseline_sum = sum_user(baseline_rows)
     result_sum = sum_user(result_rows)
@@ -168,31 +199,83 @@ def evaluate_success(baseline_rows, result_rows, min_improvement_pct, max_regres
 
         # Check 1 (target): instance must improve enough
         if target_improvement_pct < min_improvement_pct:
-            return False, target_improvement_pct, (
+            detail = (
                 f"Below minimum improvement on targeted instance {target_instance_index}: "
                 f"{target_improvement_pct:.2f}% < {min_improvement_pct}%"
+            )
+            return BenchmarkEvaluation(
+                success=False,
+                target_scope="instance",
+                target_instance_index=target_instance_index,
+                target_baseline=b,
+                target_result=r,
+                target_improvement_pct=target_improvement_pct,
+                overall_baseline=baseline_sum,
+                overall_result=result_sum,
+                overall_improvement_pct=sum_improvement_pct,
+                failure_reason="below_target_threshold",
+                detail=detail,
             )
 
         # Check 2 (guard): sum must not regress beyond cap
         if sum_improvement_pct < -max_regression_pct:
-            return False, target_improvement_pct, (
+            detail = (
                 f"Sum(user) regressed beyond cap: "
                 f"{-sum_improvement_pct:.2f}% regression > {max_regression_pct}% allowed"
             )
+            return BenchmarkEvaluation(
+                success=False,
+                target_scope="instance",
+                target_instance_index=target_instance_index,
+                target_baseline=b,
+                target_result=r,
+                target_improvement_pct=target_improvement_pct,
+                overall_baseline=baseline_sum,
+                overall_result=result_sum,
+                overall_improvement_pct=sum_improvement_pct,
+                failure_reason="overall_regression_cap",
+                detail=detail,
+            )
 
-        return True, target_improvement_pct, (
+        detail = (
             f"Reduced instance {target_instance_index} time from {b:.3f}s to {r:.3f}s "
             f"(~{target_improvement_pct:.1f}% improvement), "
             f"reduced sum(user) from {baseline_sum:.3f}s to {result_sum:.3f}s "
             f"(~{sum_improvement_pct:.1f}% improvement)"
         )
+        return BenchmarkEvaluation(
+            success=True,
+            target_scope="instance",
+            target_instance_index=target_instance_index,
+            target_baseline=b,
+            target_result=r,
+            target_improvement_pct=target_improvement_pct,
+            overall_baseline=baseline_sum,
+            overall_result=result_sum,
+            overall_improvement_pct=sum_improvement_pct,
+            failure_reason=None,
+            detail=detail,
+        )
     else:
         # Overall mode
         # Check 1 (target): sum must improve enough
         if sum_improvement_pct < min_improvement_pct:
-            return False, sum_improvement_pct, (
+            detail = (
                 f"Below minimum improvement threshold: "
                 f"{sum_improvement_pct:.2f}% < {min_improvement_pct}%"
+            )
+            return BenchmarkEvaluation(
+                success=False,
+                target_scope="overall",
+                target_instance_index=None,
+                target_baseline=baseline_sum,
+                target_result=result_sum,
+                target_improvement_pct=sum_improvement_pct,
+                overall_baseline=baseline_sum,
+                overall_result=result_sum,
+                overall_improvement_pct=sum_improvement_pct,
+                failure_reason="below_target_threshold",
+                detail=detail,
             )
 
         # Check 2 (guard): no individual instance may regress beyond cap
@@ -206,14 +289,40 @@ def evaluate_success(baseline_rows, result_rows, min_improvement_pct, max_regres
                     worst_row = i
 
         if max_row_regression > max_regression_pct:
-            return False, sum_improvement_pct, (
+            detail = (
                 f"Instance {worst_row} regressed {max_row_regression:.2f}% "
                 f"(> {max_regression_pct}% cap)"
             )
+            return BenchmarkEvaluation(
+                success=False,
+                target_scope="overall",
+                target_instance_index=None,
+                target_baseline=baseline_sum,
+                target_result=result_sum,
+                target_improvement_pct=sum_improvement_pct,
+                overall_baseline=baseline_sum,
+                overall_result=result_sum,
+                overall_improvement_pct=sum_improvement_pct,
+                failure_reason="instance_regression_cap",
+                detail=detail,
+            )
 
-        return True, sum_improvement_pct, (
+        detail = (
             f"Reduced sum(user) from {baseline_sum:.3f}s to {result_sum:.3f}s "
             f"(~{sum_improvement_pct:.1f}% improvement)"
+        )
+        return BenchmarkEvaluation(
+            success=True,
+            target_scope="overall",
+            target_instance_index=None,
+            target_baseline=baseline_sum,
+            target_result=result_sum,
+            target_improvement_pct=sum_improvement_pct,
+            overall_baseline=baseline_sum,
+            overall_result=result_sum,
+            overall_improvement_pct=sum_improvement_pct,
+            failure_reason=None,
+            detail=detail,
         )
 
 

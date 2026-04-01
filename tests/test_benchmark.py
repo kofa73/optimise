@@ -222,14 +222,48 @@ class TestEvaluateSuccess:
         """Verify the detail string contains both instance and sum info in the new format."""
         baseline = [{"user": 10.0}, {"user": 10.0}]  # sum=20
         result = [{"user": 10.0}, {"user": 9.0}]    # sum=19 (5% imp), inst 1: 10% imp
-        ok, pct, detail = evaluate_success(
+        outcome = evaluate_success(
             baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
             targeting_mode="least_improved_instance", target_instance_index=1,
         )
-        assert ok
+        assert outcome.success
         # Desired: Reduced instance 1 time from 10.000s to 9.000s (~10.0% improvement), reduced sum(user) from 20.000s to 19.000s (~5.0% improvement)
-        assert "Reduced instance 1 time from 10.000s to 9.000s (~10.0% improvement)" in detail
-        assert "reduced sum(user) from 20.000s to 19.000s (~5.0% improvement)" in detail
+        assert "Reduced instance 1 time from 10.000s to 9.000s (~10.0% improvement)" in outcome.detail
+        assert "reduced sum(user) from 20.000s to 19.000s (~5.0% improvement)" in outcome.detail
+
+    def test_instance_mode_returns_structured_metrics(self):
+        baseline = [{"user": 10.0}, {"user": 10.0}]  # sum=20
+        result = [{"user": 10.0}, {"user": 9.0}]    # sum=19, inst 1: 10% imp
+        outcome = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
+            targeting_mode="least_improved_instance", target_instance_index=1,
+        )
+
+        assert outcome.success
+        assert outcome.target_scope == "instance"
+        assert outcome.target_instance_index == 1
+        assert outcome.target_baseline == pytest.approx(10.0)
+        assert outcome.target_result == pytest.approx(9.0)
+        assert outcome.target_improvement_pct == pytest.approx(10.0)
+        assert outcome.overall_baseline == pytest.approx(20.0)
+        assert outcome.overall_result == pytest.approx(19.0)
+        assert outcome.overall_improvement_pct == pytest.approx(5.0)
+        assert outcome.failure_reason is None
+
+    def test_instance_mode_failure_marks_overall_regression_cap(self):
+        baseline = [{"user": 5.0}, {"user": 5.0}]   # sum=10
+        result = [{"user": 8.0}, {"user": 4.0}]     # sum=12, inst 1: 20% imp
+        outcome = evaluate_success(
+            baseline, result, min_improvement_pct=0.5, max_regression_pct=3,
+            targeting_mode="least_improved_instance", target_instance_index=1,
+        )
+
+        assert not outcome.success
+        assert outcome.target_scope == "instance"
+        assert outcome.target_instance_index == 1
+        assert outcome.target_improvement_pct == pytest.approx(20.0)
+        assert outcome.overall_improvement_pct == pytest.approx(-20.0)
+        assert outcome.failure_reason == "overall_regression_cap"
 
 
 from optimise.benchmark import find_least_improved_instance

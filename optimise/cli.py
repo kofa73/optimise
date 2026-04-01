@@ -73,6 +73,76 @@ from optimise.runner import parse_code_review_response
 import enum
 
 
+def _format_signed_pct(value):
+    return f"{value:+.1f}%"
+
+
+def _format_evaluation_summary(outcome):
+    """Format a success summary from structured benchmark evaluation data."""
+    if outcome.target_scope == "overall":
+        return outcome.detail
+
+    target_prefix = "Reduced" if outcome.target_improvement_pct >= 0 else "Regressed"
+    target_suffix = (
+        f"({_format_signed_pct(outcome.target_improvement_pct)} improvement)"
+        if outcome.target_improvement_pct >= 0
+        else f"({_format_signed_pct(outcome.target_improvement_pct)})"
+    )
+    target_clause = (
+        f"{target_prefix} instance {outcome.target_instance_index} time from "
+        f"{outcome.target_baseline:.3f}s to {outcome.target_result:.3f}s "
+        f"{target_suffix}"
+    )
+
+    if outcome.overall_improvement_pct >= 0:
+        overall_clause = (
+            f"reduced sum(user) from {outcome.overall_baseline:.3f}s to "
+            f"{outcome.overall_result:.3f}s "
+            f"(~{_format_signed_pct(outcome.overall_improvement_pct)} improvement)"
+        )
+    else:
+        overall_clause = (
+            f"regressed sum(user) from {outcome.overall_baseline:.3f}s to "
+            f"{outcome.overall_result:.3f}s "
+            f"(~{_format_signed_pct(outcome.overall_improvement_pct)})"
+        )
+
+    return f"{target_clause}, {overall_clause}"
+
+
+def _failure_reason_label(reason):
+    labels = {
+        "below_target_threshold": "target threshold",
+        "overall_regression_cap": "overall regression cap",
+        "instance_regression_cap": "instance regression cap",
+    }
+    return labels.get(reason, reason.replace("_", " ") if reason else "unknown")
+
+
+def _format_failed_evaluation(outcome, min_improvement_pct):
+    """Format a failure summary from structured benchmark evaluation data."""
+    if outcome.target_scope == "overall":
+        return (
+            f"target not reached: {outcome.overall_result:.3f}s vs baseline "
+            f"{outcome.overall_baseline:.3f}s "
+            f"({_format_signed_pct(outcome.overall_improvement_pct)}, "
+            f"need {min_improvement_pct:.1f}%)"
+        )
+
+    target_status = "improved" if outcome.target_improvement_pct >= 0 else "regressed"
+    overall_status = "improved" if outcome.overall_improvement_pct >= 0 else "regressed"
+    gate = _failure_reason_label(outcome.failure_reason)
+    return (
+        f"target not reached: instance {outcome.target_instance_index} {target_status} "
+        f"from {outcome.target_baseline:.3f}s to {outcome.target_result:.3f}s "
+        f"({_format_signed_pct(outcome.target_improvement_pct)}, "
+        f"need {min_improvement_pct:.1f}%), overall sum(user) {overall_status} "
+        f"from {outcome.overall_baseline:.3f}s to {outcome.overall_result:.3f}s "
+        f"({_format_signed_pct(outcome.overall_improvement_pct)}); "
+        f"failed gate: {gate}"
+    )
+
+
 def _compute_target(directory, settings):
     """Set targeting runtime state in settings dict.
 
@@ -596,7 +666,7 @@ def _do_build_test_benchmark(s, retries_left):
         return _fail_idea(s, "benchmark crash/error exhausted", explanation=str(e))
 
     # Evaluate
-    ok, improvement_pct, detail = evaluate_success(
+    outcome = evaluate_success(
         baseline_rows, best,
         s.settings["min_improvement_pct"],
         s.settings["max_regression_pct"],
@@ -604,13 +674,15 @@ def _do_build_test_benchmark(s, retries_left):
         target_instance_index=s.settings.get("_target_instance_index"),
     )
 
-    if ok:
-        return _succeed_idea(s, best, improvement_pct, detail, baseline_sum)
+    if outcome.success:
+        perf_summary = _format_evaluation_summary(outcome)
+        return _succeed_idea(s, best, outcome.improvement_pct, perf_summary, baseline_sum)
     else:
-        log.info(f"FAILED: {detail}")
-        result_sum = sum_user(best)
-        need = s.settings["min_improvement_pct"]
-        msg = f"target not reached: {result_sum:.3f}s vs baseline {baseline_sum:.3f}s ({improvement_pct:+.1f}%, need {need}%)"
+        log.info(f"FAILED: {outcome.detail}")
+        msg = _format_failed_evaluation(
+            outcome,
+            min_improvement_pct=s.settings["min_improvement_pct"],
+        )
         return _fail_idea(s, msg, bench_rows=best)
 
 
@@ -835,4 +907,3 @@ def do_command(command, directory, commit=None, _skip_build=False):
             
         log.info("Quality check passed, starting benchmark...")
         do_command("benchmark", directory, commit=None, _skip_build=True)
-
