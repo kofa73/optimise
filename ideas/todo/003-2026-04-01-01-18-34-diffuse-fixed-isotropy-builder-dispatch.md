@@ -1,3 +1,0 @@
-perf: dispatch fixed isotropy kernel builders outside the hot pixel loop
-
-Move the `isotropy_type[]` switching out of the per-pixel kernel setup by selecting dedicated always-inline builder helpers once per `heat_PDE_diffusion()` call. For instance 14 the active modes are frame-invariant, so the compiler can inline the exact gradient and laplacian rotation builders and dead-strip the unused isotropic/isophote branches. This is narrower than a giant dispatch explosion, but it still removes repeated control flow from one of the hottest CPU paths.
