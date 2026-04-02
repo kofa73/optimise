@@ -1,3 +1,0 @@
-perf: replace repeated PDE iterations with a direct tiny-scale operator on coarse isotropic levels
-
-When the wavelet pyramid reaches very small full-frame scales on the CPU path, replace the generic 17-step iterative update with a compact direct helper for the tiny isotropic grid, using precomputed coefficients for the fixed radius/order combination. This is different from merely skipping negligible scales: it still computes the same coarse contribution, but avoids spending many generic iterations on images where the stencil has collapsed to a tiny state space dominated by borders. The expected gain is smaller than the ideas above, but it attacks pure wasted work in the tail of the pyramid and should especially help presets with many iterations.
