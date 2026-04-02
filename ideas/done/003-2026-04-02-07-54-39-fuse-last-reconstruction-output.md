@@ -1,0 +1,6 @@
+perf: fuse final reconstruction with output write on the no-mask CPU path
+
+When running the unmasked CPU path, fold the last reconstruction/add-back pass directly into the final output store instead of materializing one more full intermediate image and then rereading it. This removes a whole-image read/write pair at the end of the scale pipeline and should particularly help the broad “normal” preset, where the work is dominated by repeated full-frame streaming passes rather than mask bookkeeping. Keep the fusion narrow: only the last reconstruction stage and only where no later CPU step needs the temporary buffer.
+outcome: not applicable
+
+The CPU path in [`src/iop/diffuse.c`](/workspace/darktable/src/iop/diffuse.c#L2913) already folds the last reconstruction stage into the final destination buffer. In `wavelets_process()`, the reconstruction loop overrides `buffer_out` with `reconstructed` when `s == 0` ([`src/iop/diffuse.c`](/workspace/darktable/src/iop/diffuse.c#L3040)), so the last scale writes directly to the caller’s output instead of materializing another full intermediate image. On the no-mask path, `sparse_plan.enabled` is false, so there is no extra pre-copy either ([`src/iop/diffuse.c`](/workspace/darktable/src/iop/diffuse.c#L3266)).
