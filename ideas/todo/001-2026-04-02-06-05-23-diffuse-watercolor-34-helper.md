@@ -1,0 +1,3 @@
+perf: add a no-mask third-plus-fourth-order watercolor CPU helper
+
+Add a dedicated CPU path for the benchmarked watercolor shape: no mask, zero sharpness, zero first/second-order speed, and only anisotropic third/fourth-order diffusion active. This should remove the generic four-order plumbing, dead low-order state, and mixed-mode branches from the hottest PDE loop while keeping the spatial traversal unchanged. It follows the pattern of prior preset-specific wins, but targets the under-improved instance directly instead of the existing local-contrast or all-isophote helpers.
