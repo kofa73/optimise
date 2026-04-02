@@ -1,0 +1,3 @@
+perf: prune second-and-third-order scale state from the first-plus-fourth pipeline
+
+For presets like instance 14 where only 1st and 4th orders are enabled, build a smaller per-scale runtime that does not allocate, initialize, or traverse any metadata, coefficient arrays, or helper state used exclusively by 2nd/3rd-order diffusion. This is broader than skipping zero-speed math inside the pixel loop: it deletes control-plane and full-pass setup work across the wavelet/PDE pipeline, while keeping the readable structure of the active orders intact.

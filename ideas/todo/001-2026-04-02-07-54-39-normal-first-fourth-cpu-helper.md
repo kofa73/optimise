@@ -1,0 +1,3 @@
+perf: add a no-mask normal-preset CPU helper for matched first-and-fourth diffusion
+
+Add a dedicated CPU path for the common “normal” shape used by instance 14: no mask, no luminance masking, zero sharpness, only 1st and 4th orders active, with matched speeds and matched anisotropy. Instead of entering the generic mixed-order machinery, dispatch to a helper that evaluates the shared conductance state once, applies only the two required stencil families, and skips all setup and per-pixel branching for disabled orders. This follows the preset-specific-helper pattern that has already paid off elsewhere, but targets the under-improved normal instance directly.

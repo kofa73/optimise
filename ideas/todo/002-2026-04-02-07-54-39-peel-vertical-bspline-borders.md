@@ -1,0 +1,3 @@
+perf: peel vertical B-spline border loops to remove hot-pass y clamping
+
+Extend the successful horizontal B-spline peeling idea to the vertical blur/decomposition/reconstruction passes. Split top border, interior rows, and bottom border so the dominant interior loop can use fixed row offsets with no per-pixel `MIN`/`MAX` or clamp arithmetic. The B-spline stages touch the whole image at every scale, so deleting branchy boundary math from their hot interior should give a meaningful win without changing traversal order or algorithm structure.
