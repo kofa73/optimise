@@ -1,0 +1,3 @@
+perf: split the fine helper into anisotropic and isotropic pair kernels
+
+Within the fine helper, process the anisotropic first/fourth pair and the isotropic second/third pair through two separate `always_inline` kernels instead of one generic four-order accumulation body. For this preset, the two pairs have very different math, and isolating them should reduce register pressure, shorten live ranges, and improve code generation without changing traversal or duplicating large blocks of logic. This follows the successful pattern of removing mixed-mode plumbing only when it matches an exact hot preset family.

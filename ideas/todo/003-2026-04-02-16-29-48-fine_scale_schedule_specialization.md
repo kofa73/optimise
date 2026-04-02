@@ -1,0 +1,3 @@
+perf: specialize the radius-170 no-center scale schedule for the fine CPU path
+
+Build a dedicated scale-plan path for the large-radius, `radius_center == 0` fine configuration so the CPU path does not reevaluate the same scale scheduling decisions, negligible-scale checks, and generic reconstruction bookkeeping on every run. The scale count and coarse-scale behavior are effectively determined by this preset family, so a specialized schedule can delete control overhead across the full pyramid while preserving the existing decomposition and reconstruction structure. This targets whole-image control-plane cost rather than tiny ALU substitutions.

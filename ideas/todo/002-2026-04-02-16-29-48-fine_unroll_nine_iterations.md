@@ -1,0 +1,3 @@
+perf: unroll the fixed nine-iteration CPU solver in the fine helper
+
+Inside the fine-specific helper, replace the generic iteration loop with an exact nine-step sequence using `always_inline` step functions and fixed ping-pong buffer alternation. Instance 13 always runs 9 iterations, so this should let the compiler eliminate loop control, constant-fold parity-dependent branches, and keep per-iteration invariants in registers more effectively. The change stays maintainable if the repeated body is factored into a small inline step function rather than duplicated logic.

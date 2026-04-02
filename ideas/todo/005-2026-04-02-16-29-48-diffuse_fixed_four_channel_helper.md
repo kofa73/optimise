@@ -1,0 +1,3 @@
+perf: add a fixed four-channel CPU helper for the hot diffuse path
+
+Introduce a fixed-4-channel helper for the hottest CPU PDE paths, including the fine preset helper, so `for_each_channel` expansion becomes explicit and compile-time constant for RGBA images. Darktable’s diffuse path commonly runs on 4-channel data, and making the channel count exact can reduce loop overhead, improve autovectorization, and lower aliasing uncertainty in the inner pixel body. Kept as a narrow helper layered under the existing dispatch, this should be a small, maintainable improvement rather than a broad rewrite.
