@@ -1,3 +1,0 @@
-perf: add a no-mask CPU helper for equal-speed equal-anisotropy four-order line drawing
-
-Add a dedicated CPU fast path for the instance shape where there is no mask, `sharpness == 0`, `edge_threshold == 0`, and all four orders use the same speed and anisotropy. The helper should keep the existing traversal, but remove generic per-order branching and setup by computing one shared anisotropic conductance/tensor state per pixel and then applying the four order contributions through a compact fixed sequence. Past experiments show that targeted CPU helpers are one of the safest high-win patterns, and this instance is exactly the kind of repeated preset family that can justify one.
