@@ -1,3 +1,0 @@
-perf: dynamically fallback to fast isotropic accumulation in flat regions
-
-In anisotropic diffusion, when the local gradient magnitude (`mag_sq_grad` or `mag_sq_lapl`) is negligible (e.g., in spatially flat surfaces, sky, or completely out-of-focus areas), the conductance tensor math converges to pure isotropic diffusion (`c2` approaches 1.0, yielding `alpha = 1.0`, `beta = 0.0`). By explicitly branching on `mag_sq_grad < FLT_EPSILON` inside the pixel loops to dynamically bypass the expensive `sqrtf`, inverse magnitude scaling, `dt_vector_exp`, and directional correction math, we can fall back to the extremely cheap `accumulate_isotropic` operator for that pixel. This leverages spatial sparsity to delete massive amounts of inner-loop ALU across all anisotropic presets.
