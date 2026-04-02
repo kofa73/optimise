@@ -1,0 +1,4 @@
+perf: peel top and bottom border rows out of the CPU PDE hot loop
+
+Extend the successful column-loop peeling idea to rows: process the top border band, interior rows, and bottom border band separately so the hot interior loop uses fixed row pointers and never has to reason about vertical clamping. This preserves the established row-major traversal and memory schedule while deleting boundary arithmetic from the dominant interior work. For large-radius, many-iteration presets, the interior region is large enough that the reduced per-pixel overhead should amortize the extra edge helpers.
+outcome: code review failure
