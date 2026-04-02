@@ -1,3 +1,0 @@
-perf: skip coarse CPU PDE scales whose update is provably sub-ulp for line drawing coefficients
-
-Introduce a stricter CPU-only skip test based on the actual per-scale step size and the maximum possible stencil contribution for the active equal-speed line-drawing coefficients. The current negligible-scale logic appears to be norm-based; this idea instead asks whether an entire PDE pass can still change any output float at that scale. On large-radius presets, the coarse tail often survives generic checks while contributing less than float resolution, so deleting those whole-image passes should be more valuable than local ALU tuning.
