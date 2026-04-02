@@ -1,0 +1,3 @@
+perf: early-stop coarse-scale CPU iterations when the line drawing update has converged
+
+Add an exact per-scale convergence guard for the CPU path that tracks whether an iteration produced any meaningful change, then stops iterating that scale once further passes would be no-ops within a strict float bound. This targets the large-radius, zero-sharpness, no-mask case where coarse scales can settle before the full iteration budget is exhausted. The win comes from removing entire repeated image sweeps rather than changing the inner math.

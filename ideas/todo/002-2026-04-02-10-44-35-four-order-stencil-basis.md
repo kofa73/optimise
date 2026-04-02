@@ -1,0 +1,3 @@
+perf: reuse a shared primitive stencil basis across the four active anisotropic orders
+
+Refactor the CPU hot loop so it computes a small basis of primitive symmetric neighbor sums once per pixel/channel, then forms each active order response from that basis instead of rebuilding equivalent axial/diagonal/mixed sums separately for each order. This is different from broad loop fusion: the traversal stays the same, but repeated arithmetic and live temporaries inside the per-pixel body shrink substantially. For the line-drawing instance, where all four orders are active together, this should reduce both ALU work and register pressure.
