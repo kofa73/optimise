@@ -1,3 +1,0 @@
-perf: conditionally skip expensive expf evaluation for inactive orders in the generic loop
-
-In the generic `diffuse_pixel_body`, the expensive `dt_vector_exp` function is evaluated for a diffusion order based on its isotropy type and the paired-order macro state (`GRAD_ZERO` or `LAPL_ZERO`). However, if an individual order's speed (e.g., `ABCD[0]`) is exactly zero while its paired order (`ABCD[2]`) is active, the resulting conductance tensor is subsequently multiplied by zero during accumulation, making the `expf` calculation pure dead math. Gating the `dt_vector_exp` calls on `ctx->ABCD[x] != 0.f` reliably prevents this severe exponential math overhead for mixed-order presets without adding complex macro unswitching logic.
