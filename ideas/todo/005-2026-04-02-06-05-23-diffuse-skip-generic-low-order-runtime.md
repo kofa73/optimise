@@ -1,3 +1,0 @@
-perf: drop unused low-order runtime state on third-fourth-order-only presets
-
-Introduce a compact runtime descriptor for presets where first- and second-order speeds are exactly zero, and thread that through the CPU path so no low-order coefficient arrays, per-scale bookkeeping, or reconstruction-side integration state are prepared or touched. This goes beyond merely skipping inner-loop arithmetic: it trims whole-scale setup and buffer traffic that still exists for inactive orders in the generic path. The change should stay maintainable if expressed as a small dedicated descriptor/helper rather than more macro or branch layering.
