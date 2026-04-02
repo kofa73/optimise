@@ -1,3 +1,0 @@
-perf: add a compact two-order pixel body for first-and-fourth-only diffusion
-
-Introduce an always-inline pixel helper for the common case where only the 1st and 4th orders survive after scale setup. Keep just two derivative accumulators and the variance accumulator live, and fold their weighted sum directly into the final update instead of carrying generic four-entry derivative/kernel state through the whole body. That should reduce register pressure without resorting to the broad loop fusion patterns that previously regressed.
