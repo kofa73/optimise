@@ -1,0 +1,3 @@
+perf: use halo-padded CPU PDE buffers to make the isotropic interior loop branch-free
+
+For the CPU `process` path only, allocate a small replicated border around each working image (or per-row scratch halo) and populate it once per iteration so the hot PDE loop can address neighbors with fixed offsets and no coordinate clamping or border conditionals. This differs from border peeling and split-kernel approaches because the main loop stays single-path and readable while deleting both x and y boundary math from the overwhelming majority of pixels. Given the strong results from removing hot-loop clamp work, a halo-based interior path is a plausible next step for the full-frame, no-mask normal preset.

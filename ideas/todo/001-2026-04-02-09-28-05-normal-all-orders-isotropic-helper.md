@@ -1,0 +1,3 @@
+perf: add no-mask zero-sharpness helper for the fully isotropic four-order normal path
+
+Add a dedicated CPU helper for the exact hot family behind instance 18: no mask, `sharpness == 0`, `anisotropy == 1` for all active orders, and all first through fourth-order terms enabled. The existing fast paths cover narrower mixtures; this one should hardwire the active-order set, drop generic mixed-mode plumbing, remove per-pixel order dispatch, and keep only the scalar edge-sensitivity work that this preset actually needs. This is the most promising idea because past results show preset-specific helpers win when they delete substantial generic logic, and this instance is both under-optimized and iteration-heavy.

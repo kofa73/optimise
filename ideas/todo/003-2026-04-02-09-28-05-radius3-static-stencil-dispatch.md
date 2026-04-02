@@ -1,0 +1,3 @@
+perf: specialize the CPU isotropic PDE path for the fixed radius-3 stencil
+
+Dispatch a radius-3 helper that uses compile-time constant neighbor offsets, fixed row-pointer strides, and static coefficient tables instead of the generic radius-driven kernel setup and indexing. The target instance always uses `radius = 3`, so the generic radius machinery is pure overhead on its hot path. This keeps the traversal order intact while reducing inner-loop address arithmetic and enabling better constant folding in the isotropic convolution code without touching OpenCL.
