@@ -1,3 +1,0 @@
-perf: compute one shared conductance state for matched active anisotropic orders
-
-For the watercolor case, the only active orders are third and fourth, and both use the same anisotropy and edge controls. Compute the scalar conductance state and directional invariants once per pixel, then feed that shared state into the separate third- and fourth-order spatial accumulations instead of rebuilding the same edge-sensitive tensor inputs twice. This is narrower and safer than trying to fuse the convolutions themselves: it deletes duplicated expensive setup while leaving the established stencil math and traversal intact.

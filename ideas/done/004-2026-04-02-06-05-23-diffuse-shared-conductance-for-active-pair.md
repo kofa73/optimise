@@ -1,0 +1,6 @@
+perf: compute one shared conductance state for matched active anisotropic orders
+
+For the watercolor case, the only active orders are third and fourth, and both use the same anisotropy and edge controls. Compute the scalar conductance state and directional invariants once per pixel, then feed that shared state into the separate third- and fourth-order spatial accumulations instead of rebuilding the same edge-sensitive tensor inputs twice. This is narrower and safer than trying to fuse the convolutions themselves: it deletes duplicated expensive setup while leaving the established stencil math and traversal intact.
+outcome: not applicable
+
+The current CPU code no longer rebuilds the same conductance/tensor inputs for matched active third/fourth orders. In the specialized `third`+`fourth` no-mask zero-sharpness path at [src/iop/diffuse.c](/workspace/darktable/src/iop/diffuse.c#L1857), third-order anisotropy is derived from LF axial differences, while fourth-order anisotropy is derived from HF axial differences. Those are different source signals, so their `c2` values and directional invariants are not shareable without changing the math. The generic matched-order sharing that is still valid is already present for same-family pairs (`1st`/`3rd` and `2nd`/`4th`).
