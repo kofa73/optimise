@@ -1,3 +1,0 @@
-perf: specialize the long common scale regime for the no-mask line drawing preset
-
-For the `radius=64`, `iterations=11` line-drawing family, many scales share the same control decisions: all four orders active, identical anisotropy, no mask, no sharpness, and the same tensor-building path. Split out a scale-kernel family for that common regime and leave only the small exceptional tail on the generic path. This is lighter-weight than a fully preset-specific rewrite, but it should still improve icache behavior and trim repeated control-plane overhead in a benchmark dominated by repeated runs through the same branch structure.

@@ -1,0 +1,6 @@
+perf: specialize the long common scale regime for the no-mask line drawing preset
+
+For the `radius=64`, `iterations=11` line-drawing family, many scales share the same control decisions: all four orders active, identical anisotropy, no mask, no sharpness, and the same tensor-building path. Split out a scale-kernel family for that common regime and leave only the small exceptional tail on the generic path. This is lighter-weight than a fully preset-specific rewrite, but it should still improve icache behavior and trim repeated control-plane overhead in a benchmark dominated by repeated runs through the same branch structure.
+outcome: not applicable
+
+The current CPU path in [src/iop/diffuse.c](/workspace/darktable/src/iop/diffuse.c#L3031) already has a dedicated no-mask, zero-sharpness, equal-four-orders gradient fast path (`heat_PDE_diffusion_no_mask_zero_sharpness_equal_four_orders_gradient`) for the line-drawing family, so the main branch/control overhead this idea targeted has already been split out of the generic PDE kernel. The idea is also stale against the current preset data: the built-in line-drawing preset is now `radius = 64`, `iterations = 50` in [src/iop/diffuse.c](/workspace/darktable/src/iop/diffuse.c#L570), not the `iterations = 11` regime described.
