@@ -1,3 +1,0 @@
-perf: add exact no-mask CPU helper for the fine preset family
-
-Add a dedicated CPU helper for the hot no-mask, zero-sharpness family used by instance 13: first and fourth orders active with equal anisotropy, second and third orders active and isotropic, no luminance mask, edge threshold 0, radius_center 0. This avoids the generic all-orders pixel body, mixed feature plumbing, and repeated per-pixel order dispatch, while keeping the logic readable in a single well-named specialized path. Based on prior wins from exact CPU helpers, this is the most likely place to remove substantial whole-image work without disturbing the established traversal.
